@@ -1,0 +1,26 @@
+nw2000_data.dat
+
+V1	nmempa				
+V2	hoursa				
+V3	nmempb				
+V4	hoursb				
+V5	nmempc				
+V6	hoursc				
+V7	nmempd				
+V8	hoursd				
+V9	nmemp2a				
+V10	hours2a				
+V11	nmemp2b				
+V12	hours2b				
+V13	nmemp2c				
+V14	hours2c				
+V15	nmemp2d				
+V16	hours2d				
+V17	zip13				
+V18	chain	BK: chain = 1	WE: chain =4	RR: chain = 3	KFC: chain = 2
+V19	PA				
+V20	NJ				
+V21	fullzip				
+V22	biwkly				
+V23	mnthly				
+V24	comp	
