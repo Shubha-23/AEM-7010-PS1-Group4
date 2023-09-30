@@ -13,6 +13,12 @@ col <- c('SHEET', 'CHAIN', 'CO_OWNED', 'STATE', 'SOUTHJ', 'CENTRALJ',
             
 colnames(ck1994) <- col
 
+# Data preparation
+# Replace . with na
+str(ck1994)
+ck1994[ck1994 == '.'] <- NA
+# Adjust data type change string to numeric
+ck1994[, c(12:17,19,23:27,31:46)] <- sapply(ck1994[, c(12:17,19,23:27,31:46)], as.numeric)
 
 # Calculate FTE Employment variable
 ck1994['FTE'] <- ck1994['EMPFT'] + ck1994['NMGRS'] + 0.5*ck1994['EMPPT'] # for wave 1
