@@ -1,6 +1,7 @@
 library(readr)
 library(data.table)
 library(dplyr)
+library(tibble)
 
 in_path <- getwd()
 ck1994 <- read.table(file.path(in_path, 'Data', 'Raw', 'ck1994_data.dat'))
@@ -70,14 +71,22 @@ T1_2 <- ck1994 %>%
   mutate(across(where(is.numeric), ~ round(., 2)))
 
 T1_2f <- transpose(T1_2)
+# add rowname
+rownames(T1_2f) <- colnames(T1_2)
+colnames(T1_2f) <- c("PA","NJ")
+T1_2f <- T1_2f[!(row.names(T1_2f) %in% c("STATE")),]
 
-res <- t.test(FTE2 ~ STATE, data = ck1994)
-res <- t.test(PFT2 ~ STATE, data = ck1994)
-res <- t.test(WAGE_ST2 ~ STATE, data = ck1994)
-res <- t.test(PFM2 ~ STATE, data = ck1994)
-res <- t.test(HRSOPEN2 ~ STATE, data = ck1994)
+FTE2_t <- t.test(FTE2 ~ STATE, data = ck1994)$statistic * -1
+PFT2_t <- t.test(PFT2 ~ STATE, data = ck1994)$statistic * -1
+WAGEST2_t <- t.test(WAGE_ST2 ~ STATE, data = ck1994)$statistic * -1
+PFM2_t <- t.test(PFM2 ~ STATE, data = ck1994)$statistic * -1
+HRSOPEN2_t <- t.test(HRSOPEN2 ~ STATE, data = ck1994)$statistic * -1
+T1_2_ttest <- data.frame(ttest=c(FTE2_t,PFT2_t,WAGEST2_t,PFM2_t,HRSOPEN2_t)) %>%
+               mutate(across(where(is.numeric), ~ round(., 1)))
+# add rowname
+rownames(T1_2_ttest) <- c('FTE2_t','PFT2_t','WAGEST2_t','PFM2_t','HRSOPEN2_t')
 
-T1_2_stdr <- ck1994 %>% 
+T1_2_se <- ck1994 %>% 
   group_by(STATE) %>% 
   summarize(FTE2_se = sd(FTE2, na.rm = TRUE)/sqrt(sum(num, na.rm = TRUE)),
             PFT2_se = sd(PFT2, na.rm = TRUE)/sqrt(sum(num, na.rm = TRUE)),
@@ -85,3 +94,19 @@ T1_2_stdr <- ck1994 %>%
             PFM2_se = sd(PFM2, na.rm = TRUE)/sqrt(sum(num, na.rm = TRUE)),
             HRSOPEN2_se = sd(HRSOPEN2, na.rm = TRUE)/sqrt(sum(num, na.rm = TRUE))) %>%
   mutate(across(where(is.numeric), ~ round(., 2)))
+
+T1_2_sef <- transpose(T1_2_se)
+# add rowname
+rownames(T1_2_sef) <- colnames(T1_2_se)
+colnames(T1_2_sef) <- c("PA","NJ")
+T1_2_sef <- T1_2_sef[!(row.names(T1_2_sef) %in% c("STATE")),]
+
+# Merge three- mean, se, ttest df together
+T1_2f <- rownames_to_column(T1_2f, var="Mean")
+T1_2_sef <- rownames_to_column(T1_2_sef, var="SE")
+T1_2_ttest <- rownames_to_column(T1_2_ttest, var="TTEST")
+
+
+
+
+
