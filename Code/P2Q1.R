@@ -74,7 +74,7 @@ T1_2 <- ck1994 %>%
 T1_2f <- transpose(T1_2)
 # add rowname
 rownames(T1_2f) <- colnames(T1_2)
-colnames(T1_2f) <- c("PA","NJ")
+colnames(T1_2f) <- c("PA_Mean","NJ_Mean")
 T1_2f <- T1_2f[!(row.names(T1_2f) %in% c("STATE")),]
 
 FTE2_t <- t.test(FTE2 ~ STATE, data = ck1994)$statistic * -1
@@ -99,7 +99,7 @@ T1_2_se <- ck1994 %>%
 T1_2_sef <- transpose(T1_2_se)
 # add rowname
 rownames(T1_2_sef) <- colnames(T1_2_se)
-colnames(T1_2_sef) <- c("PA","NJ")
+colnames(T1_2_sef) <- c("PA_SE","NJ_SE")
 T1_2_sef <- T1_2_sef[!(row.names(T1_2_sef) %in% c("STATE")),]
 
 # Merge three- mean, se, ttest df together
@@ -111,7 +111,7 @@ T1_2_ttest <- rownames_to_column(T1_2_ttest, var="TTEST")
 T1_2_ttest$Key <- T1_2_ttest$TTEST
 
 # Create key for merging
-T1_2f %>% separate(Key, 
+T1_2f <- T1_2f %>% separate(Key, 
                  sep = "_", 
                  into = c("Key"))
 T1_2_sef <- T1_2_sef %>% separate(Key, 
@@ -124,7 +124,8 @@ T1_2_ttest <- T1_2_ttest %>% separate(Key,
 # Merge all together
 df_list <- list(T1_2f, T1_2_sef, T1_2_ttest)  
 
-#merge all data frames together
-T1_2_final <- df_list %>% reduce(full_join, by='Key')
+df_final <- Reduce(function(x, y) merge(x, y, by='Key', all.x=TRUE), df_list)
+
+df_final <- df_fianl[["Key","PA_Mean","NJ_Mean","PA_SE","NJ_SE","ttest"]]
 
 
