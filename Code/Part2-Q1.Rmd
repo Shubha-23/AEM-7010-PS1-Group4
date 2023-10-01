@@ -436,15 +436,16 @@ wave_2_data
 # calculate differences
   T3R1_res <- bind_rows(T3R1, T3R1[2,]-T3R1[1,])
   T3R1_res$group<- c("PA", "NJ", "Difference")
-  kable(T3R1_res, digits=2)
-```
-
-
-
-```{r}
-# Calculate SE for difference: SE = SQR(VAR/N + VAR/N)
+  T3R1_res$wave = 1
+  T3R1_res <- T3R1_res[,-1]
+  
+  # Calculate SE for difference: SE = SQR(VAR/N + VAR/N)
   diff_se1 <- sqrt(T3R1_res$var[1]/T3R1_res$n[1] + T3R1_res$var[2]/T3R1_res$n[2])
   diff_se1
+  # Edit original cell
+  T3R1_res$se[3] <- diff_se1
+  
+  kable(T3R1_res, digits=2)
 ```
 
 ```{r}
@@ -462,18 +463,37 @@ wave_2_data
 # calculate differences
   T3R2_res <- bind_rows(T3R2, T3R2[2,]-T3R2[1,])
   T3R2_res$group<- c("PA", "NJ", "Difference")
-  kable(T3R2_res, digits=2)
-```
-```{r}
+  T3R2_res$wave = 2
+  T3R2_res <- T3R2_res[,-1]
 # Calculate SE for difference: SE = SQR(VAR/N + VAR/N)
   diff_se2 <- sqrt(T3R2_res$var[1]/T3R2_res$n[1] + T3R2_res$var[2]/T3R2_res$n[2])
   diff_se2
+# Edit original cell
+  T3R2_res$se[3] <- diff_se2
+  
+  kable(T3R2_res, digits=2)
 ```
 
 ```{r}
 # 3rd Row
+# merge two former dfs together
+T3R3 <- rbind(T3R1_res, T3R2_res)
+T3R3
+# SE = SQR(VAR/N + VAR/N)
+change_mean_PA <- T3R3$mean[4] - T3R3$mean[1]
+change_mean_PA_se <- sqrt(T3R3$var[4]/T3R3$n[4] + T3R3$var[1]/T3R3$n[1])
 
+change_mean_NJ <- T3R3$mean[5] - T3R3$mean[2]
+change_mean_NJ_se <- sqrt(T3R3$var[5]/T3R3$n[5] + T3R3$var[2]/T3R3$n[2]) 
 
+DD <- change_mean_NJ - change_mean_PA
+DD_se <- sqrt(T3R3$var[4]/T3R3$n[4] + T3R3$var[1]/T3R3$n[1] + T3R3$var[5]/T3R3$n[5] + T3R3$var[2]/T3R3$n[2]) 
 
+# organzie them together
+T3R3_m <- data.frame() 
 ```
 
+```{r}
+# 4th Row
+
+```
