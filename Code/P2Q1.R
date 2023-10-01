@@ -126,6 +126,6 @@ df_list <- list(T1_2f, T1_2_sef, T1_2_ttest)
 
 df_final <- Reduce(function(x, y) merge(x, y, by='Key', all.x=TRUE), df_list)
 
-df_final <- df_fianl[["Key","PA_Mean","NJ_Mean","PA_SE","NJ_SE","ttest"]]
+df_final <- df_final[c("Key","PA_Mean","NJ_Mean","PA_SE","NJ_SE","ttest")]
 
 
