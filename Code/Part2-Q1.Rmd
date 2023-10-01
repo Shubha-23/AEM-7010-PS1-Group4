@@ -24,7 +24,8 @@ library(kableExtra)
 ## Data Preparation
 
 ```{r}
-ck1994_raw_data <- fread("~/Desktop/AEM 7010/AEM-7010-PS1-Group4/Data/Raw/ck1994_data.dat")
+in_path <- getwd()
+ck1994_raw_data <- read.table(file.path(in_path, 'Data', 'Raw', 'ck1994_data.dat'))
 
 name_changes <- c('SHEET', 'CHAIN', 'CO_OWNED', 'STATE', 'SOUTHJ', 'CENTRALJ',
              'NORTHJ', 'PA1', 'PA2', 'SHORE', 'NCALLS', 'EMPFT', 'EMPPT',
