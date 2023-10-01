@@ -42,8 +42,8 @@ ck1994$FTE <- ck1994$EMPFT + ck1994$NMGRS + 0.5*ck1994$EMPPT # for wave 1
 ck1994$FTE2 <- ck1994$EMPFT2 + ck1994$NMGRS2 + 0.5*ck1994$EMPPT2 # for wave 2
 
 # Percentage full-time employees
-ck1994$PFT <- ck1994$EMPFT/ck1994$FTE
-ck1994$PFT2 <- ck1994$EMPFT2/ck1994$FTE2
+ck1994$PFT <- 100*ck1994$EMPFT/ck1994$FTE
+ck1994$PFT2 <- 100*ck1994$EMPFT2/ck1994$FTE2
 
 
 # Notice there are NAs
@@ -69,10 +69,19 @@ T1_2 <- ck1994 %>%
             HRSOPEN2_mean = mean(HRSOPEN2, na.rm = TRUE)) %>%
   mutate(across(where(is.numeric), ~ round(., 2)))
 
+T1_2f <- transpose(T1_2)
 
+res <- t.test(FTE2 ~ STATE, data = ck1994)
 res <- t.test(PFT2 ~ STATE, data = ck1994)
+res <- t.test(WAGE_ST2 ~ STATE, data = ck1994)
+res <- t.test(PFM2 ~ STATE, data = ck1994)
+res <- t.test(HRSOPEN2 ~ STATE, data = ck1994)
 
-
-
-
-
+T1_2_stdr <- ck1994 %>% 
+  group_by(STATE) %>% 
+  summarize(FTE2_se = sd(FTE2, na.rm = TRUE)/sqrt(sum(num, na.rm = TRUE)),
+            PFT2_se = sd(PFT2, na.rm = TRUE)/sqrt(sum(num, na.rm = TRUE)),
+            WAGEST2_se = sd(WAGE_ST2, na.rm = TRUE)/sqrt(sum(num, na.rm = TRUE)),
+            PFM2_se = sd(PFM2, na.rm = TRUE)/sqrt(sum(num, na.rm = TRUE)),
+            HRSOPEN2_se = sd(HRSOPEN2, na.rm = TRUE)/sqrt(sum(num, na.rm = TRUE))) %>%
+  mutate(across(where(is.numeric), ~ round(., 2)))
