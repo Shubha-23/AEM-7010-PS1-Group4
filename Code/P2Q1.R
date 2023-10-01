@@ -2,6 +2,7 @@ library(readr)
 library(data.table)
 library(dplyr)
 library(tibble)
+library(tidyr)
 
 in_path <- getwd()
 ck1994 <- read.table(file.path(in_path, 'Data', 'Raw', 'ck1994_data.dat'))
@@ -48,9 +49,9 @@ ck1994$PFT2 <- 100*ck1994$EMPFT2/ck1994$FTE2
 
 
 # Notice there are NAs
-ck1994$WAGEST_425 <- ifelse(ck1994$WAGE_ST ==4.25, 1, 0) 
-ck1994$WAGEST2_425 <- ifelse(ck1994$WAGE_ST2 ==4.25, 1, 0) 
-ck1994$WAGEST2_505 <- ifelse(ck1994$WAGE_ST2 ==5.05, 1, 0) 
+ck1994$WAGEST425 <- ifelse(ck1994$WAGE_ST ==4.25, 1, 0) 
+ck1994$WAGEST2425 <- ifelse(ck1994$WAGE_ST2 ==4.25, 1, 0) 
+ck1994$WAGEST2505 <- ifelse(ck1994$WAGE_ST2 ==5.05, 1, 0) 
 
 # Price of Full Meal
 ck1994$PFM <- ck1994$PSODA + ck1994$PFRY + ck1994$PENTREE
@@ -63,8 +64,8 @@ T1_2 <- ck1994 %>%
   summarize(FTE2_mean = mean(FTE2, na.rm = TRUE),
             PFT2_mean = mean(PFT2, na.rm = TRUE),
             WAGEST2_mean = mean(WAGE_ST2, na.rm = TRUE),
-            WAGEST2_425_pct = 100 * sum(WAGEST2_425, na.rm = TRUE)/sum(num, na.rm = TRUE), 
-            WAGEST2_505_pct = 100 * sum(WAGEST2_505, na.rm = TRUE)/sum(num, na.rm = TRUE), 
+            WAGEST2425_pct = 100 * sum(WAGEST2425, na.rm = TRUE)/sum(num, na.rm = TRUE), 
+            WAGEST2505_pct = 100 * sum(WAGEST2505, na.rm = TRUE)/sum(num, na.rm = TRUE), 
             BONUS2_pct = 100 * sum(SPECIAL2, na.rm = TRUE)/sum(num, na.rm = TRUE),# not accurate
             PFM2_mean = mean(PFM2, na.rm = TRUE),
             HRSOPEN2_mean = mean(HRSOPEN2, na.rm = TRUE)) %>%
@@ -103,10 +104,27 @@ T1_2_sef <- T1_2_sef[!(row.names(T1_2_sef) %in% c("STATE")),]
 
 # Merge three- mean, se, ttest df together
 T1_2f <- rownames_to_column(T1_2f, var="Mean")
+T1_2f$Key <- T1_2f$Mean
 T1_2_sef <- rownames_to_column(T1_2_sef, var="SE")
+T1_2_sef$Key <- T1_2_sef$SE
 T1_2_ttest <- rownames_to_column(T1_2_ttest, var="TTEST")
+T1_2_ttest$Key <- T1_2_ttest$TTEST
 
+# Create key for merging
+T1_2f %>% separate(Key, 
+                 sep = "_", 
+                 into = c("Key"))
+T1_2_sef <- T1_2_sef %>% separate(Key, 
+                            sep = "_", 
+                            into = c("Key"))
+T1_2_ttest <- T1_2_ttest %>% separate(Key, 
+                             sep = "_", 
+                             into = c("Key"))
 
+# Merge all together
+df_list <- list(T1_2f, T1_2_sef, T1_2_ttest)  
 
+#merge all data frames together
+T1_2_final <- df_list %>% reduce(full_join, by='Key')
 
 
