@@ -1,6 +1,6 @@
 ---
 title: "Part2-Q1"
-author: "Tianjiao Mei"
+author: "Tianjiao Mei" "Yongfan Zhao"
 date: "2023-10-01"
 output: html_document
 ---
@@ -93,8 +93,6 @@ store_distribution_types <- store_distribution_chain %>%
   rename(NJ = "1", PA = "0") %>%
   select(Type, NJ, PA) %>%
   rename (Variable = Type)
-
-store_distribution_types
 ```
 
 
@@ -107,16 +105,31 @@ ck1994_new <- ck1994_raw_data_col %>%
   mutate(EMPFT = as.numeric(EMPFT),
          NMGRS = as.numeric(NMGRS),
          EMPPT = as.numeric(EMPPT),
+         EMPFT2 = as.numeric(EMPFT2),
+         NMGRS2 = as.numeric(NMGRS2),
+         EMPPT2 = as.numeric(EMPPT2),
          
          WAGE_ST = as.numeric(WAGE_ST),
+         WAGE_ST2 = as.numeric(WAGE_ST2),
          
          PSODA = as.numeric(PSODA),
+         PSODA2 = as.numeric(PSODA2),
          PFRY = as.numeric(PFRY),
-         PENTREE = as.numeric(PENTREE)) %>%
+         PFRY2 = as.numeric(PFRY2),
+         PENTREE = as.numeric(PENTREE),
+         PENTREE2 = as.numeric(PENTREE2),
+         
+         HRSOPEN2 = as.numeric(HRSOPEN2)) %>%
   
   mutate(FTE = EMPFT + NMGRS + (0.5)*EMPPT,
-         Fulltime_Perc = (EMPFT/FTE)*100,
-         PFULL = PSODA + PFRY + PENTREE)
+         FTE2 = EMPFT2 + NMGRS2 + (0.5)*EMPPT2) %>%
+  
+  mutate(Fulltime_Perc = (EMPFT/FTE)*100,
+         Fulltime_Perc2 = (EMPFT2/FTE2)*100) %>%
+  
+mutate(PFULL = PSODA + PFRY + PENTREE,
+       PFULL2 = PSODA2 + PFRY2 + PENTREE2)   
+  
 ```
 
 
@@ -180,7 +193,6 @@ t.stat.PFULL <- -(t.test(PFULL ~ STATE, data = ck1994_new)$statistic)
 t.stat.HRSOPEN <- -(t.test(HRSOPEN ~ STATE, data = ck1994_new)$statistic) 
 
 t.stat <- data_frame(t.stat.FTE, t.stat.PFE, t.stat.WAGE.ST, t.stat.PFULL, t.stat.HRSOPEN) 
-t.stat
 ```
 
 
@@ -248,8 +260,9 @@ transpose_t.stat <- transpose_t.stat.data %>%
 
 wave_1_data <- transpose_mean_se_wave1 %>%
   left_join(transpose_t.stat, by = "Variable")
-wave_1_data
 ```
+
+
 
 ## Table 2 - 3
 
