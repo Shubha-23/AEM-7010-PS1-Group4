@@ -93,6 +93,7 @@ store_distribution_types <- store_distribution_chain %>%
   rename(NJ = "1", PA = "0") %>%
   select(Type, NJ, PA) %>%
   rename (Variable = Type)
+store_distribution_types
 ```
 
 
@@ -260,13 +261,13 @@ transpose_t.stat <- transpose_t.stat.data %>%
 
 wave_1_data <- transpose_mean_se_wave1 %>%
   left_join(transpose_t.stat, by = "Variable")
+
+wave_1_data
 ```
 
 
 
 ## Table 2 - 3
-
-
 ```{r}
 # Calculate means:
 
@@ -414,6 +415,7 @@ transpose_t.stat2 <- transpose_t.stat.data2 %>%
 
 wave_2_data <- transpose_mean_se_wave2 %>%
   left_join(transpose_t.stat2, by = "Variable")
+wave_2_data
 ```
 
 
@@ -421,15 +423,57 @@ wave_2_data <- transpose_mean_se_wave2 %>%
 # Table 3: Column 1-3
 
 # 1st row
-  T3R1 <- ck1994_new %>% group_by(STATE) %>% # group_by state
-            select(STATE, "FTE") %>%
-            group_by(N = n(), add = TRUE) %>% # count number obs in each state
-            summarize_all(funs(mean, var, nasum = sum(is.na(.))), na.rm = TRUE) %>% # aggregate/summarize data
-            mutate(n = N - nasum) %>% 
-            mutate(se = sqrt(var/n))
+  T3R1 <- ck1994_new %>% 
+          select(STATE, FTE) %>%
+          group_by(STATE) %>% # group_by state
+          summarise(mean = mean(FTE, na.rm = TRUE), 
+                    var= var(FTE, na.rm = TRUE), 
+                    nasum = sum(is.na(FTE)), 
+                    N=n()) %>% # aggregate/summarize data
+          mutate(n = N - nasum) %>% 
+          mutate(se = sqrt(var/n))
 
 # calculate differences
   T3R1_res <- bind_rows(T3R1, T3R1[2,]-T3R1[1,])
   T3R1_res$group<- c("PA", "NJ", "Difference")
   kable(T3R1_res, digits=2)
 ```
+
+
+
+```{r}
+# Calculate SE for difference: SE = SQR(VAR/N + VAR/N)
+  diff_se1 <- sqrt(T3R1_res$var[1]/T3R1_res$n[1] + T3R1_res$var[2]/T3R1_res$n[2])
+  diff_se1
+```
+
+```{r}
+# 2ed row
+  T3R2 <- ck1994_new %>% 
+          select(STATE, FTE2) %>%
+          group_by(STATE) %>% # group_by state
+          summarise(mean = mean(FTE2, na.rm = TRUE), 
+                    var= var(FTE2, na.rm = TRUE), 
+                    nasum = sum(is.na(FTE2)), 
+                    N=n()) %>% # aggregate/summarize data
+          mutate(n = N - nasum) %>% 
+          mutate(se = sqrt(var/n))
+
+# calculate differences
+  T3R2_res <- bind_rows(T3R2, T3R2[2,]-T3R2[1,])
+  T3R2_res$group<- c("PA", "NJ", "Difference")
+  kable(T3R2_res, digits=2)
+```
+```{r}
+# Calculate SE for difference: SE = SQR(VAR/N + VAR/N)
+  diff_se2 <- sqrt(T3R2_res$var[1]/T3R2_res$n[1] + T3R2_res$var[2]/T3R2_res$n[2])
+  diff_se2
+```
+
+```{r}
+# 3rd Row
+
+
+
+```
+
