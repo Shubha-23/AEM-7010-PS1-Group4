@@ -24,7 +24,7 @@ library(kableExtra)
 ## Data Preparation
 
 ```{r}
-in_path <- getwd()
+in_path <- dirname(getwd())
 ck1994_raw_data <- read.table(file.path(in_path, 'Data', 'Raw', 'ck1994_data.dat'))
 
 name_changes <- c('SHEET', 'CHAIN', 'CO_OWNED', 'STATE', 'SOUTHJ', 'CENTRALJ',
@@ -93,6 +93,8 @@ store_distribution_types <- store_distribution_chain %>%
   rename(NJ = "1", PA = "0") %>%
   select(Type, NJ, PA) %>%
   rename (Variable = Type)
+
+store_distribution_types
 ```
 
 
@@ -178,6 +180,7 @@ t.stat.PFULL <- -(t.test(PFULL ~ STATE, data = ck1994_new)$statistic)
 t.stat.HRSOPEN <- -(t.test(HRSOPEN ~ STATE, data = ck1994_new)$statistic) 
 
 t.stat <- data_frame(t.stat.FTE, t.stat.PFE, t.stat.WAGE.ST, t.stat.PFULL, t.stat.HRSOPEN) 
+t.stat
 ```
 
 
@@ -245,6 +248,7 @@ transpose_t.stat <- transpose_t.stat.data %>%
 
 wave_1_data <- transpose_mean_se_wave1 %>%
   left_join(transpose_t.stat, by = "Variable")
+wave_1_data
 ```
 
 
