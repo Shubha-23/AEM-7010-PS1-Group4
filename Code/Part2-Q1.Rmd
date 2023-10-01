@@ -1,0 +1,250 @@
+---
+title: "Part2-Q1"
+author: "Tianjiao Mei"
+date: "2023-10-01"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Load library
+
+```{r}
+library(tidyverse)
+library(data.table)
+library(purrr)
+
+library(knitr)
+library(kableExtra)
+```
+
+
+## Data Preparation
+
+```{r}
+ck1994_raw_data <- fread("~/Desktop/AEM 7010/AEM-7010-PS1-Group4/Data/Raw/ck1994_data.dat")
+
+name_changes <- c('SHEET', 'CHAIN', 'CO_OWNED', 'STATE', 'SOUTHJ', 'CENTRALJ',
+             'NORTHJ', 'PA1', 'PA2', 'SHORE', 'NCALLS', 'EMPFT', 'EMPPT',
+             'NMGRS', 'WAGE_ST', 'INCTIME', 'FIRSTINC', 'BONUS', 'PCTAFF',
+             'MEALS', 'OPEN', 'HRSOPEN', 'PSODA', 'PFRY', 'PENTREE', 'NREGS',
+             'NREGS11', 'TYPE2', 'STATUS2', 'DATE2', 'NCALLS2', 'EMPFT2',
+             'EMPPT2', 'NMGRS2', 'WAGE_ST2', 'INCTIME2', 'FIRSTIN2', 'SPECIAL2',
+             'MEALS2', 'OPEN2R', 'HRSOPEN2', 'PSODA2', 'PFRY2', 'PENTREE2', 
+             'NREGS2','NREGS112')
+
+ck1994_raw_data_col <- ck1994_raw_data %>%
+  set_names(name_changes)
+```
+
+
+## Table 2 - 1
+
+```{r}
+## count total stores by state
+store_count_state <- ck1994_raw_data_col %>%
+  select(CHAIN, CO_OWNED, STATE) %>%
+  group_by(STATE) %>%
+  summarise(total_store_count = n())
+
+## distribution by chain
+store_distribution_chain <- ck1994_raw_data_col %>%
+  select(CHAIN, STATE) %>%
+  group_by(CHAIN, STATE) %>%
+  summarise(store_count = n()) %>%
+  
+  left_join(store_count_state, by = "STATE") %>%
+  mutate(distribution_chain = round((store_count/total_store_count)*100, 1)) %>%
+  
+  select(CHAIN, STATE, distribution_chain) %>%
+  pivot_wider(names_from = STATE, values_from = distribution_chain) %>%
+  
+  mutate(CHAIN = recode(CHAIN, 
+                        "1" = "Burger King", 
+                        "2" = "KFC", 
+                        "3" = "Roy Rogers",
+                        "4" = "Wendy's")) %>%
+  rename(Type = CHAIN)
+
+## distribution by co-owned
+store_distribution_own <- ck1994_raw_data_col %>%
+  select(CO_OWNED, STATE) %>%
+  group_by(CO_OWNED, STATE) %>%
+  summarise(store_count = n()) %>%
+  
+  left_join(store_count_state, by = "STATE") %>%
+  mutate(distribution_own = round((store_count/total_store_count)*100, 1)) %>%
+  filter(CO_OWNED == 1) %>%
+  
+  select(CO_OWNED, STATE, distribution_own) %>%
+  pivot_wider(names_from = STATE, values_from = distribution_own) %>%
+  
+  mutate(CO_OWNED= recode(CO_OWNED, 
+                        "1" = "Company_owned")) %>%
+  rename(Type = CO_OWNED)
+
+## Combine together
+
+store_distribution_types <- store_distribution_chain %>%
+  full_join(store_distribution_own) %>%
+  rename(NJ = "1", PA = "0") %>%
+  select(Type, NJ, PA) %>%
+  rename (Variable = Type)
+```
+
+
+## Table 2 - 2
+
+```{r}
+## create variables (FTE, PFE, PFULL)
+
+ck1994_new <- ck1994_raw_data_col %>%
+  mutate(EMPFT = as.numeric(EMPFT),
+         NMGRS = as.numeric(NMGRS),
+         EMPPT = as.numeric(EMPPT),
+         
+         WAGE_ST = as.numeric(WAGE_ST),
+         
+         PSODA = as.numeric(PSODA),
+         PFRY = as.numeric(PFRY),
+         PENTREE = as.numeric(PENTREE)) %>%
+  
+  mutate(FTE = EMPFT + NMGRS + (0.5)*EMPPT,
+         Fulltime_Perc = (EMPFT/FTE)*100,
+         PFULL = PSODA + PFRY + PENTREE)
+```
+
+
+```{r}
+# Calculate means:
+
+## 1. calculate mean of 4.25 wage percentage
+
+ck1994_4.25_wave1 <- ck1994_raw_data_col %>%
+  select(STATE, WAGE_ST) %>%
+  filter(WAGE_ST == 4.25) %>%
+  group_by(STATE) %>%
+  summarise(count_4.25 = n()) %>%
+  
+  left_join(store_count_state, by = "STATE") %>%
+  mutate(wage_4.25_perc = round((count_4.25/total_store_count)*100, 1)) %>%
+  
+  select(STATE, wage_4.25_perc)
+
+## 2. calculate mean of bonus
+
+ck1994_bonus_wave1 <- ck1994_raw_data_col %>%
+  select(STATE, BONUS) %>%
+  filter(BONUS == 1) %>%
+  group_by(STATE) %>%
+  summarise(count_bonus = n()) %>%
+  
+  left_join(store_count_state, by = "STATE") %>%
+  mutate(bonus_perc = round((count_bonus/total_store_count)*100, 1)) %>%
+  
+  select(STATE, bonus_perc)
+
+## calculate other means and se and combine together:
+
+stat_wave1 <- ck1994_new %>%
+  select(STATE, FTE, Fulltime_Perc, WAGE_ST, HRSOPEN, PFULL)%>%
+  group_by(STATE) %>%
+  summarise(mean_FTE = mean(FTE, na.rm = T),
+            sem_FTE = sd(FTE, na.rm = T) / sqrt(n()),
+            mean_fulltime_perc = mean(Fulltime_Perc, na.rm = T),
+            sem_fulltime_perc = sd(Fulltime_Perc, na.rm = T) / sqrt(n()),
+            mean_wage_st = mean(WAGE_ST, na.rm = T),
+            sem_wage_st = sd(WAGE_ST, na.rm = T) / sqrt(n()),
+            mean_pfull = mean(PFULL, na.rm = T),
+            sem_pfull = sd(PFULL, na.rm = T) / sqrt(n()),
+            mean_hours_open = mean(HRSOPEN, na.rm = T),
+            sem_hours_open = sd(HRSOPEN, na.rm = T) / sqrt(n())) %>%
+  
+  left_join(ck1994_4.25_wave1, by = "STATE") %>%
+  left_join(ck1994_bonus_wave1, by = "STATE")
+```
+
+
+```{r}
+# Calculate t stats:
+
+t.stat.FTE <- -(t.test(FTE ~ STATE, data = ck1994_new)$statistic) # negative sign because of different definition of group 0 and group 1
+t.stat.PFE <- -(t.test(Fulltime_Perc ~ STATE, data = ck1994_new)$statistic) 
+t.stat.WAGE.ST <- -(t.test(WAGE_ST ~ STATE, data = ck1994_new)$statistic) 
+t.stat.PFULL <- -(t.test(PFULL ~ STATE, data = ck1994_new)$statistic) 
+t.stat.HRSOPEN <- -(t.test(HRSOPEN ~ STATE, data = ck1994_new)$statistic) 
+
+t.stat <- data_frame(t.stat.FTE, t.stat.PFE, t.stat.WAGE.ST, t.stat.PFULL, t.stat.HRSOPEN) 
+```
+
+
+
+```{r}
+# Combine means, se, and t-stats for Table 2-2:
+
+## 1. mean and se:
+
+mean_se_wave1 <- 
+  stat_wave1 %>%
+  mutate(
+    mean_se_FTE = sprintf("%.1f (%.2f)", mean_FTE, sem_FTE),
+    mean_se_PFE = sprintf("%.1f (%.1f)", mean_fulltime_perc, sem_fulltime_perc),
+    mean_se_wage_st = sprintf("%.2f (%.2f)", mean_wage_st, sem_wage_st),
+    mean_se_pfull = sprintf("%.2f (%.2f)", mean_pfull, sem_pfull),
+    mean_se_hoursopen = sprintf("%.1f (%.1f)", mean_hours_open, sem_hours_open),
+    mean_4.25_perc = wage_4.25_perc,
+    mean_bonus = bonus_perc
+  ) %>%
+  select(mean_se_FTE, mean_se_PFE, mean_se_wage_st, mean_4.25_perc, 
+         mean_se_pfull, mean_se_hoursopen, mean_bonus) %>%
+  rename("FTE Employment" = mean_se_FTE,
+         "Percentage full-time employees" = mean_se_PFE,
+         "Starting wage" = mean_se_wage_st,
+         "Wage = $4.25 (percentage)" = mean_4.25_perc,
+         "Price of full meal" = mean_se_pfull,
+         "Hours opwn(weekday)" = mean_se_hoursopen,
+         "Recruiting bonus" = mean_bonus)
+
+transpose_mean_se_wave1 <- as.data.frame(t(mean_se_wave1))
+row.names(transpose_mean_se_wave1) <- NULL
+
+transpose_mean_se_wave1 <- transpose_mean_se_wave1 %>%
+  mutate(Variable = colnames(mean_se_wave1)) %>%
+  rename(PA = V1,
+         NJ = V2) %>%
+  select(Variable, NJ, PA)
+
+
+## t stat:
+
+data.t.stat <- t.stat %>%
+   rename("FTE Employment" = t.stat.FTE,
+         "Percentage full-time employees" = t.stat.PFE,
+         "Starting wage" = t.stat.WAGE.ST,
+         "Price of full meal" = t.stat.PFULL,
+         "Hours opwn(weekday)" = t.stat.HRSOPEN) %>%
+  mutate(
+    "Wage = $4.25 (percentage)"= NA,
+    "Recruiting bonus" = NA
+  )
+
+
+transpose_t.stat.data <- as.data.frame(t(data.t.stat))
+row.names(transpose_t.stat.data) <- NULL
+
+transpose_t.stat <- transpose_t.stat.data %>%
+  mutate(Variable = colnames(data.t.stat)) %>%
+  rename(t_stat = V1) %>%
+  select(Variable, t_stat) %>%
+  mutate(t_stat = round(t_stat, 1))
+
+## 3. combine mean, se, and t-stat
+
+wave_1_data <- transpose_mean_se_wave1 %>%
+  left_join(transpose_t.stat, by = "Variable")
+```
+
+
+
