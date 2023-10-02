@@ -477,6 +477,10 @@ wave_2_data
 ```{r}
 # 3rd Row
 # merge two former dfs together
+ck1994_new$FTE_change <- ck1994_new$FTE - ck1994_new$FTE2
+
+
+
 T3R3 <- rbind(T3R1_res, T3R2_res)
 T3R3
 # SE = SQR(VAR/N + VAR/N)
@@ -490,10 +494,10 @@ DD <- round(change_mean_NJ - change_mean_PA, 2)
 DD_se <- round(sqrt(T3R3$var[4]/T3R3$n[4] + T3R3$var[1]/T3R3$n[1] + T3R3$var[5]/T3R3$n[5] + T3R3$var[2]/T3R3$n[2]), 2)
 
 # organize them together
-T3R3_m <- data.frame(PA=c(paste(change_mean_PA,"(",change_mean_PA_se,")")),
+# T3R3_m <- data.frame(PA=c(paste(change_mean_PA,"(",change_mean_PA_se,")")),
                      NJ=c(paste(change_mean_NJ,"(",change_mean_NJ_se,")")),
                      DIFF_NJPA=c(paste(DD,"(",DD_se,")")))
-T3R3_m
+# T3R3_m
 ```
 
 ```{r}
