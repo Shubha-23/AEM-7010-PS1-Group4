@@ -480,20 +480,96 @@ wave_2_data
 T3R3 <- rbind(T3R1_res, T3R2_res)
 T3R3
 # SE = SQR(VAR/N + VAR/N)
-change_mean_PA <- T3R3$mean[4] - T3R3$mean[1]
-change_mean_PA_se <- sqrt(T3R3$var[4]/T3R3$n[4] + T3R3$var[1]/T3R3$n[1])
+change_mean_PA <- round(T3R3$mean[4] - T3R3$mean[1], 2)
+change_mean_PA_se <- round(sqrt(T3R3$var[4]/T3R3$n[4] + T3R3$var[1]/T3R3$n[1]), 2)
 
-change_mean_NJ <- T3R3$mean[5] - T3R3$mean[2]
-change_mean_NJ_se <- sqrt(T3R3$var[5]/T3R3$n[5] + T3R3$var[2]/T3R3$n[2]) 
+change_mean_NJ <- round(T3R3$mean[5] - T3R3$mean[2], 2)
+change_mean_NJ_se <- round(sqrt(T3R3$var[5]/T3R3$n[5] + T3R3$var[2]/T3R3$n[2]),2)
 
-DD <- change_mean_NJ - change_mean_PA
-DD_se <- sqrt(T3R3$var[4]/T3R3$n[4] + T3R3$var[1]/T3R3$n[1] + T3R3$var[5]/T3R3$n[5] + T3R3$var[2]/T3R3$n[2]) 
+DD <- round(change_mean_NJ - change_mean_PA, 2)
+DD_se <- round(sqrt(T3R3$var[4]/T3R3$n[4] + T3R3$var[1]/T3R3$n[1] + T3R3$var[5]/T3R3$n[5] + T3R3$var[2]/T3R3$n[2]), 2)
 
-# organzie them together
-T3R3_m <- data.frame() 
+# organize them together
+T3R3_m <- data.frame(PA=c(paste(change_mean_PA,"(",change_mean_PA_se,")")),
+                     NJ=c(paste(change_mean_NJ,"(",change_mean_NJ_se,")")),
+                     DIFF_NJPA=c(paste(DD,"(",DD_se,")")))
+T3R3_m
 ```
 
 ```{r}
 # 4th Row
+# 4th row: Balanced sample of stores
+    # Filter complete cases across those two variables
+    ck1994_ba <- ck1994_new %>% filter(complete.cases(FTE, FTE2))
+    
+# 4-1st row
+  T3R1_ba <- ck1994_ba %>% 
+          select(STATE, FTE) %>%
+          group_by(STATE) %>% # group_by state
+          summarise(mean = mean(FTE, na.rm = TRUE), 
+                    var= var(FTE, na.rm = TRUE), 
+                    nasum = sum(is.na(FTE)), 
+                    N=n()) %>% # aggregate/summarize data
+          mutate(n = N - nasum) %>% 
+          mutate(se = sqrt(var/n))
 
+# calculate differences
+  T3R1_res_ba <- bind_rows(T3R1_ba, T3R1_ba[2,]-T3R1_ba[1,])
+  T3R1_res_ba$group<- c("PA", "NJ", "Difference")
+  T3R1_res_ba$wave = 1
+  T3R1_res_ba <- T3R1_res_ba[,-1]
+  
+  # Calculate SE for difference: SE = SQR(VAR/N + VAR/N)
+  diff_se1_ba <- sqrt(T3R1_res_ba$var[1]/T3R1_res_ba$n[1] + T3R1_res_ba$var[2]/T3R1_res_ba$n[2])
+  diff_se1_ba
+  # Edit original cell
+  T3R1_res_ba$se[3] <- diff_se1_ba   
+  
+# 4-2ed row
+  T3R2_ba <- ck1994_ba %>% 
+          select(STATE, FTE2) %>%
+          group_by(STATE) %>% # group_by state
+          summarise(mean = mean(FTE2, na.rm = TRUE), 
+                    var= var(FTE2, na.rm = TRUE), 
+                    nasum = sum(is.na(FTE2)), 
+                    N=n()) %>% # aggregate/summarize data
+          mutate(n = N - nasum) %>% 
+          mutate(se = sqrt(var/n))
+
+# calculate differences
+  T3R2_res_ba <- bind_rows(T3R2_ba, T3R2_ba[2,]-T3R2_ba[1,])
+  T3R2_res_ba$group<- c("PA", "NJ", "Difference")
+  T3R2_res_ba$wave = 2
+  T3R2_res_ba <- T3R2_res_ba[,-1]
+# Calculate SE for difference: SE = SQR(VAR/N + VAR/N)
+  diff_se2_ba <- sqrt(T3R2_res_ba$var[1]/T3R2_res_ba$n[1] + T3R2_res_ba$var[2]/T3R2_res_ba$n[2])
+  diff_se2_ba
+# Edit original cell
+  T3R2_res_ba$se[3] <- diff_se2_ba
+
+# 4-3rd Row
+# merge two former dfs together
+T3R3_ba <- rbind(T3R1_res_ba, T3R2_res_ba)
+T3R3_ba
+# SE = SQR(VAR/N + VAR/N)
+change_mean_PA <- round(T3R3_ba$mean[4] - T3R3_ba$mean[1], 2)
+change_mean_PA_se <- round(sqrt(T3R3_ba$var[4]/T3R3_ba$n[4] + T3R3_ba$var[1]/T3R3_ba$n[1]), 2)
+
+change_mean_NJ <- round(T3R3_ba$mean[5] - T3R3_ba$mean[2], 2)
+change_mean_NJ_se <- round(sqrt(T3R3_ba$var[5]/T3R3_ba$n[5] + T3R3_ba$var[2]/T3R3_ba$n[2]),2)
+
+DD <- round(change_mean_NJ - change_mean_PA, 2)
+DD_se <- round(sqrt(T3R3_ba$var[4]/T3R3_ba$n[4] + T3R3_ba$var[1]/T3R3_ba$n[1] + T3R3_ba$var[5]/T3R3_ba$n[5] + T3R3_ba$var[2]/T3R3_ba$n[2]), 2)
+
+# organize them together
+T3R3_mba <- data.frame(PA=c(paste(change_mean_PA,"(",change_mean_PA_se,")")),
+                     NJ=c(paste(change_mean_NJ,"(",change_mean_NJ_se,")")),
+                     DIFF_NJPA=c(paste(DD,"(",DD_se,")")))
+T3R3_mba
 ```
+
+```{r}
+# setting FTE at temporarily closed stores to Od
+```
+
+
