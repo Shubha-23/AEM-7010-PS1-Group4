@@ -601,3 +601,32 @@ data_r1 <- ck1994_new
 
 ```
 
+```{r}
+read.table(file.path(in_path, 'Data', 'Raw', 'nw2000_data.dat'))
+name_changes <- c('nmempa', 'hoursa', 'nmempb', 'hoursb', 'nmempc', 'hoursc',
+             'nmempd', 'hoursd', 'nmemp2a', 'hours2a', 'nmemp2b', 'hours2b', 'nmemp2c',
+             'hours2c', 'nmemp2d', 'hours2d', 'zip13', 'chain', 'PA',
+             'NJ', 'fullzip', 'biwkly', 'mnthly', 'comp')
+
+nw2000_raw_data_col <- nw2000_raw_data %>%
+  select(-V25, - V26, - V27) %>%
+  set_names(name_changes) %>%
+  mutate(across(where(is.character), as.numeric))
+```
+
+```{r}
+## if randomly extract "nmempa/b/c/d as the FTE:
+nw2000_random <- nw2000_raw_data_col %>%
+  rowwise() %>%
+  mutate(FTE = {
+    vals <- c(nmempa, nmempb, nmempc, nmempd)
+    valid_vals <- vals[!is.na(vals)]
+    if(length(valid_vals) == 0) NA else sample(valid_vals, 1)},
+    
+    FTE2 = {
+    vals <- c(nmemp2a, nmemp2b, nmemp2c, nmemp2d)
+    valid_vals <- vals[!is.na(vals)]
+    if(length(valid_vals) == 0) NA else sample(valid_vals, 1)},
+    
+    FTE_change = FTE2-FTE)
+```
