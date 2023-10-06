@@ -570,17 +570,56 @@ T3
 ```{r}
 # NW 2000 Table 4
 # construct nonmanagement employment
-ck1994_new$FTE_nm <- EMPFT + (0.5)*EMPPT
-ck1994_new$FTE2_nm <- EMPFT2 + (0.5)*EMPPT2
+ck1994_new$FTE_nm <- ck1994_new$EMPFT + (0.5)*ck1994_new$EMPPT
+ck1994_new$FTE2_nm <- ck1994_new$EMPFT2 + (0.5)*ck1994_new$EMPPT2
+ck1994_new$FTE_change_nm <- ck1994_new$FTE2_nm - ck1994_new$FTE_nm
 
-# create regression sample
-# drop missing for starting wage and managers
-data_r1 <- ck1994_new
+# Column 1
+# create regression sample, drop missing for starting wage and managers
+data1 <- ck1994_new %>% drop_na(c("WAGE_ST", "NMGRS"))
+fit11 <- lm(FTE_change_nm ~ STATE, data = data1)
+summary(fit11)           
+
+fit12 <- lm(FTE_change_nm ~ STATE + BK + KFC + RR + WD, data = data1)
+summary(fit12)
+
+# elasticity
+coef1 <- abs(fit12$coefficients[2])
+# elast1 <- coef1 * mean((data1$STATE),na.rm =TRUE)
+
+
+# Column 2
+# create regression sample, drop missing for starting wage and managers
+fit21 <- lm(FTE_change_nm ~ STATE, data = ck1994_new)
+summary(fit21)           
+
+fit22 <- lm(FTE_change_nm ~ STATE + BK + KFC + RR + WD, data = ck1994_new)
+summary(fit22)
+
+# elasticity
+coef2 <- abs(fit22$coefficients[2] * mean((ck1994_new$FTE_change_nm),na.rm =TRUE))
+# pct_effect2 <- coef / abs(fit22$coefficients[2])
+
+
+# Column 3
+# create regression sample, drop obs for BK KFC co-owned samples
+ck1994_new$BK_co <- ck1994_new$BK * ck1994_new$CO_OWNED
+ck1994_new$KFC_co <- ck1994_new$KFC * ck1994_new$CO_OWNED
+data3 <- ck1994_new[(ck1994_new$BK_co == 0) & (ck1994_new$KFC_co == 0), ]
+fit31 <- lm(FTE_change_nm ~ STATE, data = data3)
+summary(fit31)           
+
+fit32 <- lm(FTE_change_nm ~ STATE + BK + KFC + RR + WD, data = data3)
+summary(fit32)
+
+# Column 4
+# sampled universe- use NW data
 
 ```
 
 ```{r}
 nw2000_raw_data <- read.table(file.path(in_path, 'Data', 'Raw', 'nw2000_data.dat'))
+
 name_changes <- c('nmempa', 'hoursa', 'nmempb', 'hoursb', 'nmempc', 'hoursc',
              'nmempd', 'hoursd', 'nmemp2a', 'hours2a', 'nmemp2b', 'hours2b', 'nmemp2c',
              'hours2c', 'nmemp2d', 'hours2d', 'zip13', 'chain', 'PA',
@@ -593,18 +632,28 @@ nw2000_raw_data_col <- nw2000_raw_data %>%
 ```
 
 ```{r}
-## if randomly extract "nmempa/b/c/d as the FTE:
-nw2000_random <- nw2000_raw_data_col %>%
+# randomly choose hoursa/b/c/d as the hours data used
+
+nw2000_random <-
+  nw2000_raw_data_col %>%
   rowwise() %>%
-  mutate(FTE = {
-    vals <- c(nmempa, nmempb, nmempc, nmempd)
+  mutate(hours = {
+    vals <- c(hoursa, hoursb, hoursc, hoursd)
     valid_vals <- vals[!is.na(vals)]
     if(length(valid_vals) == 0) NA else sample(valid_vals, 1)},
     
-    FTE2 = {
-    vals <- c(nmemp2a, nmemp2b, nmemp2c, nmemp2d)
+    hours2 = {
+    vals <- c(hours2a, hours2b, hours2c, hours2d)
     valid_vals <- vals[!is.na(vals)]
-    if(length(valid_vals) == 0) NA else sample(valid_vals, 1)},
-    
-    FTE_change = FTE2-FTE)
+    if(length(valid_vals) == 0) NA else sample(valid_vals, 1)}) %>%
+  
+  mutate(FTE = case_when(
+    biwkly == "1" ~ (hours/2)/35,
+    mnthly == "1" ~ (hours/4)/35
+  )) %>%
+  
+  mutate(FTE2 = case_when(
+    biwkly == "1" ~ (hours2/2)/35,
+    mnthly == "1" ~ (hours2/4)/35
+  ))
 ```
