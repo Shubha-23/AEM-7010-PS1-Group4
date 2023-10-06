@@ -433,7 +433,14 @@ wave_2_data
   # Edit original cell
   T3R1_res$se[3] <- diff_se1
   
-  kable(T3R1_res, digits=2)
+  # organize them together
+  T3R1_res <- T3R1_res %>% mutate_if(is.numeric, ~ round(.,2))
+  T3R1_res
+
+  T3R1_m <- data.frame(PA=c(paste(T3R1_res$mean[1],"(",T3R1_res$se[1],")")),
+                     NJ=c(paste(T3R1_res$mean[2],"(",T3R1_res$se[2],")")),
+                     DIFF_NJPA=c(paste(T3R1_res$mean[3],"(",T3R1_res$se[3],")")))
+  T3R1_m
 ```
 
 ```{r}
@@ -460,51 +467,40 @@ wave_2_data
   T3R2_res$se[3] <- diff_se2
   
   kable(T3R2_res, digits=2)
+
+  # organize them together
+  T3R2_res <- T3R2_res %>% mutate_if(is.numeric, ~ round(.,2))
+  T3R2_res
+
+  T3R2_m <- data.frame(PA=c(paste(T3R2_res$mean[1],"(",T3R2_res$se[1],")")),
+                     NJ=c(paste(T3R2_res$mean[2],"(",T3R2_res$se[2],")")),
+                     DIFF_NJPA=c(paste(T3R2_res$mean[3],"(",T3R2_res$se[3],")")))
+  T3R2_m
 ```
 
 ```{r}
 # 3rd Row
-# replace na with 0 to create unbalanced sample of stores
-ck1994_new$FTE_na0 <- ck1994_new$FTE
-ck1994_new$FTE2_na0 <- ck1994_new$FTE2
-col <- c("FTE","FTE2")
-ck1994_new <- ck1994_new %>% mutate(FTE_na0 = ifelse(is.na(FTE_na0), 0, FTE_na0),
-                                    FTE2_na0 = ifelse(is.na(FTE2_na0), 0, FTE2_na0))
-ck1994_new$FTE_change_na0 <- ck1994_new$FTE2_na0 - ck1994_new$FTE_na0
+T3R3 <- rbind(T3R1_res, T3R2_res)
+T3R3
+# SE = SQR(VAR/N + VAR/N)
+change_mean_PA <- round(T3R3$mean[4] - T3R3$mean[1], 2)
+change_mean_PA_se <- round(sqrt(T3R3$var[4]/T3R3$n[4] + T3R3$var[1]/T3R3$n[1]), 2)
 
-# 2ed row
-  T3R3 <- ck1994_new %>% 
-          select(STATE, FTE_change_na0) %>%
-          group_by(STATE) %>% # group_by state
-          summarise(mean = mean(FTE_change_na0, na.rm = TRUE), 
-                    var= var(FTE_change_na0, na.rm = TRUE), 
-                    nasum = sum(is.na(FTE_change_na0)), 
-                    N=n()) %>% # aggregate/summarize data
-          mutate(n = N - nasum) %>% 
-          mutate(se = sqrt(var/n))
+change_mean_NJ <- round(T3R3$mean[5] - T3R3$mean[2], 2)
+change_mean_NJ_se <- round(sqrt(T3R3$var[5]/T3R3$n[5] + T3R3$var[2]/T3R3$n[2]),2)
 
-# calculate differences
-  T3R3_res <- bind_rows(T3R3, T3R3[2,]-T3R3[1,])
-  T3R3_res$group<- c("PA", "NJ", "Difference")
-  T3R3_res <- T3R3_res[,-1]
-# Calculate SE for difference: SE = SQR(VAR/N + VAR/N)
-  diff_se3 <- sqrt(T3R3_res$var[1]/T3R3_res$n[1] + T3R3_res$var[2]/T3R3_res$n[2])
-  diff_se3
-# Edit original cell
-  T3R3_res$se[3] <- diff_se3
-  
-  kable(T3R3_res, digits=2)
+DD <- round(change_mean_NJ - change_mean_PA, 2)
+DD_se <- round(sqrt(T3R3$se[3] + T3R3$se[6]), 2)
 
 # organize them together
-# T3R3_m <- data.frame(PA=c(paste(change_mean_PA,"(",change_mean_PA_se,")")),
-#                     NJ=c(paste(change_mean_NJ,"(",change_mean_NJ_se,")")),
-#                     DIFF_NJPA=c(paste(DD,"(",DD_se,")")))
-# T3R3_m
+T3R3_m <- data.frame(PA=c(paste(change_mean_PA,"(",change_mean_PA_se,")")),
+                     NJ=c(paste(change_mean_NJ,"(",change_mean_NJ_se,")")),
+                     DIFF_NJPA=c(paste(DD,"(",DD_se,")")))
+T3R3_m
 ```
 
 ```{r}
-# 5th Row
-# setting FTE at temporarily closed stores to O
+# 4th row
 ck1994_new$FTE_change <- ck1994_new$FTE2 - ck1994_new$FTE
 
 
@@ -529,6 +525,79 @@ ck1994_new$FTE_change <- ck1994_new$FTE2 - ck1994_new$FTE
   T3R4_res$se[3] <- diff_se3
   
   kable(T3R4_res, digits=2)
+  
+  T3R4_res <- T3R4_res %>% mutate_if(is.numeric, ~ round(.,2))
+  
+# organize them together
+T3R4_m <- data.frame(PA=c(paste(T3R4_res$mean[1],"(",T3R4_res$se[1],")")),
+                     NJ=c(paste(T3R4_res$mean[2],"(",T3R4_res$se[2],")")),
+                     DIFF_NJPA=c(paste(T3R4_res$mean[3],"(",T3R4_res$se[3],")")))
+T3R4_m
 ```
 
+```{r}
+# 5th Row
+# setting FTE at temporarily closed stores to O
+ck1994_new$FTE2_5 <- ifelse(ck1994_new$STATUS2>=2, 0, ck1994_new$FTE2)
+ck1994_new$FTE_change5 <- ck1994_new$FTE2_5 - ck1994_new$FTE
+
+
+  T3R5 <- ck1994_new %>% 
+          select(STATE, FTE_change5) %>%
+          group_by(STATE) %>% # group_by state
+          summarise(mean = mean(FTE_change5, na.rm = TRUE), 
+                    var= var(FTE_change5, na.rm = TRUE), 
+                    nasum = sum(is.na(FTE_change5)), 
+                    N=n()) %>% # aggregate/summarize data
+          mutate(n = N - nasum) %>% 
+          mutate(se = sqrt(var/n))
+
+# calculate differences
+  T3R5_res <- bind_rows(T3R5, T3R5[2,]-T3R5[1,])
+  T3R5_res$group<- c("PA", "NJ", "Difference")
+  T3R5_res <- T3R5_res[,-1]
+# Calculate SE for difference: SE = SQR(VAR/N + VAR/N)
+  diff_se3 <- sqrt(T3R5_res$var[1]/T3R5_res$n[1] + T3R5_res$var[2]/T3R5_res$n[2])
+  diff_se3
+# Edit original cell
+  T3R5_res$se[3] <- diff_se3
+  
+  kable(T3R5_res, digits=2)
+
+T3R5_res <- T3R5_res %>% mutate_if(is.numeric, ~ round(.,2))
+T3R5_res
+  
+# organize them together
+T3R5_m <- data.frame(PA=c(paste(T3R5_res$mean[1],"(",T3R5_res$se[1],")")),
+                     NJ=c(paste(T3R5_res$mean[2],"(",T3R5_res$se[2],")")),
+                     DIFF_NJPA=c(paste(T3R5_res$mean[3],"(",T3R5_res$se[3],")")))
+T3R5_m
+```
+
+```{r}
+# append all dfs together
+T3 <- rbind(T3R1_m,T3R2_m,T3R3_m,T3R4_m,T3R5_m) 
+
+# add row names
+rownames(T3) <- c("FTE employment before, all available observations",
+                  "FTE employment after, all available observations",
+                  "Change in mean FTE employment",
+                  "Change in mean FTE employment, balanced sample fo stores",
+                  "Change in mean FTE employment, setting FTE at temporarily closed stores to 0")
+colnames(T3) <- c("PA","NJ","Difference, NJ-PA")
+T3
+
+```
+
+```{r}
+# NW 2000 Table 4
+# construct nonmanagement employment
+ck1994_new$FTE_nm <- EMPFT + (0.5)*EMPPT
+ck1994_new$FTE2_nm <- EMPFT2 + (0.5)*EMPPT2
+
+# create regression sample
+# drop missing for starting wage and managers
+data_r1 <- ck1994_new
+
+```
 
