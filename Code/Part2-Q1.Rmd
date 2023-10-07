@@ -580,12 +580,13 @@ data1 <- ck1994_new %>% drop_na(c("WAGE_ST", "NMGRS"))
 fit11 <- lm(FTE_change_nm ~ STATE, data = data1)
 summary(fit11)           
 
-fit12 <- lm(FTE_change_nm ~ STATE + BK + KFC + RR + WD, data = data1)
+fit12 <- lm(FTE_change_nm ~ STATE + BK + KFC + RR, data = data1)
 summary(fit12)
 
 # elasticity
 coef1 <- abs(fit12$coefficients[2])
-# elast1 <- coef1 * mean((data1$STATE),na.rm =TRUE)
+# mean of NJ 
+elast1 <- coef1 / 
 
 
 # Column 2
@@ -593,7 +594,7 @@ coef1 <- abs(fit12$coefficients[2])
 fit21 <- lm(FTE_change_nm ~ STATE, data = ck1994_new)
 summary(fit21)           
 
-fit22 <- lm(FTE_change_nm ~ STATE + BK + KFC + RR + WD, data = ck1994_new)
+fit22 <- lm(FTE_change_nm ~ STATE + BK + KFC + RR, data = ck1994_new)
 summary(fit22)
 
 # elasticity
@@ -609,7 +610,7 @@ data3 <- ck1994_new[(ck1994_new$BK_co == 0) & (ck1994_new$KFC_co == 0), ]
 fit31 <- lm(FTE_change_nm ~ STATE, data = data3)
 summary(fit31)           
 
-fit32 <- lm(FTE_change_nm ~ STATE + BK + KFC + RR + WD, data = data3)
+fit32 <- lm(FTE_change_nm ~ STATE + BK + KFC + RR, data = data3)
 summary(fit32)
 
 # Column 4
@@ -634,26 +635,93 @@ nw2000_raw_data_col <- nw2000_raw_data %>%
 ```{r}
 # randomly choose hoursa/b/c/d as the hours data used
 
-nw2000_random <-
-  nw2000_raw_data_col %>%
+nw2000_random <- nw2000_raw_data_col %>%
   rowwise() %>%
-  mutate(hours = {
-    vals <- c(hoursa, hoursb, hoursc, hoursd)
-    valid_vals <- vals[!is.na(vals)]
-    if(length(valid_vals) == 0) NA else sample(valid_vals, 1)},
+  mutate(
+    hours = if (!is.na(hoursa)) {
+      hoursa
+    } else {
+      sample(c(hoursb, hoursc, hoursd), 1)
+    },
     
-    hours2 = {
-    vals <- c(hours2a, hours2b, hours2c, hours2d)
-    valid_vals <- vals[!is.na(vals)]
-    if(length(valid_vals) == 0) NA else sample(valid_vals, 1)}) %>%
+    hours2 = if (!is.na(hours2a)) {
+      hours2a
+    } else {
+      sample(c(hours2b, hours2c, hours2d), 1)
+    }
+  ) %>%
   
   mutate(FTE = case_when(
     biwkly == "1" ~ (hours/2)/35,
-    mnthly == "1" ~ (hours/4)/35
+    mnthly == "1" ~ (hours/4)/35,
+    TRUE ~ hours/35
   )) %>%
   
   mutate(FTE2 = case_when(
     biwkly == "1" ~ (hours2/2)/35,
-    mnthly == "1" ~ (hours2/4)/35
-  ))
+    mnthly == "1" ~ (hours2/4)/35,
+    TRUE ~ hours/35
+  )) %>%
+  
+  mutate(FTE_change = FTE2-FTE)
 ```
+
+```{r}
+# NW2000 Table 4 continued
+# construct FTE change
+nw2000_random$FTE_change_nm <- nw2000_random$FTE2 - nw2000_random$FTE
+
+# Column 4
+# create regression sample, drop missing for starting wage and managers
+fit41 <- lm(FTE_change_nm ~ NJ, data = nw2000_random)
+summary(fit41)           
+
+# create dummy for diff chains
+nw2000_random <- nw2000_random %>% mutate(BK = ifelse(chain==1, 1, 0),
+                         KFC = ifelse(chain==2, 1, 0),
+                         RR = ifelse(chain==3, 1, 0),
+                         WD = ifelse(chain==4, 1, 0))
+fit42 <- lm(FTE_change_nm ~ NJ + BK + KFC + RR, data = nw2000_random)
+summary(fit42)
+
+# elasticity
+coef1 <- abs(fit41$coefficients[2])
+# elast1 <- coef1 * mean((data1$STATE),na.rm =TRUE)
+
+# Column 4
+# create regression sample, drop missing for starting wage and managers
+fit41 <- lm(FTE_change_nm ~ NJ, data = nw2000_random)
+summary(fit41)           
+
+fit42 <- lm(FTE_change_nm ~ NJ + BK + KFC + RR, data = nw2000_random)
+summary(fit42)
+```
+
+```{r}
+# Table 4 Column 5
+nw2000_random$hours_mean <- rowMeans(data.frame(nw2000_random$hoursa, nw2000_random$hoursb, nw2000_random$hoursc, nw2000_random$hoursd), na.rm=TRUE)
+nw2000_random$hours2_mean <- rowMeans(data.frame(nw2000_random$hours2a, nw2000_random$hours2b, nw2000_random$hours2c, nw2000_random$hours2d), na.rm=TRUE)
+
+# ! add weekly data
+nw2000_random <- nw2000_random %>%
+  mutate(FET_mean = case_when(
+    biwkly == "1" ~ (hours_mean/2)/35,
+    mnthly == "1" ~ (hours_mean/4)/35,
+    TRUE ~ hours_mean/35
+  )) %>%
+  
+  mutate(FET2_mean = case_when(
+    biwkly == "1" ~ (hours2_mean/2)/35,
+    mnthly == "1" ~ (hours2_mean/4)/35,
+    TRUE ~ hours2_mean/35
+  ))
+
+nw2000_random$FTE_mean_change <- nw2000_random$FET2_mean - nw2000_random$FET_mean
+
+fit51 <- lm(FTE_mean_change ~ NJ, data = nw2000_random)
+summary(fit51)           
+
+fit52 <- lm(FTE_mean_change ~ NJ + BK + KFC + RR, data = nw2000_random)
+summary(fit52)
+```
+
