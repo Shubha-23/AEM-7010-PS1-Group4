@@ -4,7 +4,6 @@ author: "Tianjiao Mei" "Yongfan Zhao"
 date: "2023-10-01"
 output: html_document
 ---
-
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
@@ -14,17 +13,17 @@ knitr::opts_chunk$set(echo = TRUE)
 ```{r}
 library(tidyverse)
 library(data.table)
-library(purrr)
-
 library(knitr)
 library(kableExtra)
+library(cowplot)
 ```
 
 
-## Data Preparation
+## CK1994: Data Preparation
 
 ```{r}
 in_path <- dirname(getwd())
+
 ck1994_raw_data <- read.table(file.path(in_path, 'Data', 'Raw', 'ck1994_data.dat'))
 
 name_changes <- c('SHEET', 'CHAIN', 'CO_OWNED', 'STATE', 'SOUTHJ', 'CENTRALJ',
@@ -74,9 +73,13 @@ ck1994_new <- ck1994_raw_data_col %>%
   mutate(Fulltime_Perc = (EMPFT/FTE)*100,
          Fulltime_Perc2 = (EMPFT2/FTE2)*100) %>%
   mutate(PFULL = PSODA + PFRY + PENTREE,
-       PFULL2 = PSODA2 + PFRY2 + PENTREE2)   
+       PFULL2 = PSODA2 + PFRY2 + PENTREE2) %>%
+  mutate(FTE_change = FTE2-FTE)
 ```
 
+---------------------------------------------------------------------------------
+
+# 1(a). Table 2
 
 ## Table 2 - 1
 
@@ -258,7 +261,6 @@ table2_2
 
 ## Table 2 - 3
 
-
 ```{r}
 ## Calculate means and se:
 
@@ -369,25 +371,23 @@ table2_3 <- transpose_mean_se_wave2 %>%
 table2_3
 ```
 
-
 \renewcommand{\arraystretch}{1.2}
 ```{r}
 # Combine Table 2-1, 2-2, 2-3 for the full Table 2:
 
 Table2_comb <- rbind(table2_1, table2_2, table2_3)
 
-Table2_comb %>% kbl(caption = "Table 2 - Means of Key Variables",  booktabs = T) %>%
+Table2_comb %>% kbl(caption = "Means of Key Variables",  booktabs = T) %>%
   kable_styling() %>%
   pack_rows("1. Distribution of Store Types (percentages)", 1, 5, italic = T) %>%
   pack_rows("2. Means in Wave 1", 6, 12, italic = T) %>%
   pack_rows("3. Means in Wave 2", 13, 20, italic = T)
 ```
 
-
+--------------------------------------------------------------------
+# 1.(c) Reproduce CK1994 Table 3 Column 1-3
 
 ```{r}
-# Table 3: Column 1-3
-
 # 1st row
   T3R1 <- ck1994_new %>% 
           select(STATE, FTE) %>%
@@ -418,7 +418,7 @@ Table2_comb %>% kbl(caption = "Table 2 - Means of Key Variables",  booktabs = T)
   T3R1_m <- data.frame(PA=c(paste(T3R1_res$mean[1],"(",T3R1_res$se[1],")")),
                      NJ=c(paste(T3R1_res$mean[2],"(",T3R1_res$se[2],")")),
                      DIFF_NJPA=c(paste(T3R1_res$mean[3],"(",T3R1_res$se[3],")")))
-  T3R1_m
+T3R1_m
 ```
 
 ```{r}
@@ -557,102 +557,26 @@ T3R5_m
 T3 <- rbind(T3R1_m,T3R2_m,T3R3_m,T3R4_m,T3R5_m) 
 
 # add row names
-rownames(T3) <- c("FTE employment before, all available observations",
-                  "FTE employment after, all available observations",
-                  "Change in mean FTE employment",
-                  "Change in mean FTE employment, balanced sample fo stores",
-                  "Change in mean FTE employment, setting FTE at temporarily closed stores to 0")
-colnames(T3) <- c("PA","NJ","Difference, NJ-PA")
-T3
-kable(T3)
+rowidx <- c("1. FTE employment before, \n all available observations",
+                  "2. FTE employment after, \n all available observations",
+                  "3. Change in mean FTE \n employment",
+                  "4. Change in mean FTE \n employment, balanced \n sample of stores",
+                  "5. Change in mean FTE \n employment, setting \n FTE at temporarily \n closed stores to 0")
+
+T3 <- cbind(rowidx, T3)
+
+colnames(T3) <- c("Variable","PA \n (i)","NJ \n (ii)","Difference, \n NJ-PA (iii)")
+T3 %>% kbl(caption = "TABLE 3- AVERAGE EMPLOYMENT PER STORE \n BEFORE
+            AND AFTER THE RIDE \n IN NEW JERSEY MINIMUM WAGE",  booktabs = T)
+
+
 ```
 
+# 1(d). Summary statsistic for NW2000 FTE
 
-```{r}
-# NW 2000 Table 4
-# construct nonmanagement employment
-ck1994_new$FTE_nm <- ck1994_new$EMPFT + (0.5)*ck1994_new$EMPPT
-ck1994_new$FTE2_nm <- ck1994_new$EMPFT2 + (0.5)*ck1994_new$EMPPT2
-ck1994_new$FTE_change_nm <- ck1994_new$FTE2_nm - ck1994_new$FTE_nm
+## NW2000
 
-# Column 1
-# create regression sample, drop missing for starting wage and managers
-data1 <- ck1994_new %>% drop_na(c("WAGE_ST", "NMGRS"))
-fit11 <- lm(FTE_change_nm ~ STATE, data = data1)
-summary(fit11)  
-
-fit12 <- lm(FTE_change_nm ~ STATE + BK + KFC + RR, data = data1)
-summary(fit12)
-
-# se
-se11 <- 1.12
-se12 <- 1.12
-
-# calculate mean FTE/WAGE for NJ for elasticity
-mean_FTE_group_CK <- ck1994_new %>% 
-            group_by(STATE) %>%
-            summarise(mean_FTE_nm = mean(FTE_nm,na.rm=T),
-                      mean_FTE2_nm = mean(FTE2_nm,na.rm=T),
-                      mean_wage = mean(WAGE_ST,na.rm=T),
-                      mean_wage2 = mean(WAGE_ST2,na.rm=T))
-
-# elasticity
-# coef1 <- abs(fit12$coefficients[2])
-# mean of NJ (annual average employment data from Table 3 CK)
-elast1 = fit12$coefficients[2] * (mean_FTE_group_CK$mean_wage[2] / mean_FTE_group_CK$mean_FTE_nm[2])
-pct_effect1 = 100 * fit12$coefficients[2] / mean_FTE_group_CK$mean_FTE_nm[2]
-obs1 <- length(fit12$residuals)
-R_sqrd1 <- summary(fit12)$adj.r.squared
-
-
-# Column 2
-# add missing for starting wage and managers
-fit21 <- lm(FTE_change_nm ~ STATE, data = ck1994_new)
-summary(fit21)           
-
-fit22 <- lm(FTE_change_nm ~ STATE + BK + KFC + RR, data = ck1994_new)
-summary(fit22)
-
-# se
-se21 <- 1.12
-se22 <- 1.12
-
-# elasticity
-coef2 <- abs(fit22$coefficients[2] * mean((ck1994_new$FTE_change_nm),na.rm =TRUE))
-
-elast2 = fit22$coefficients[2] * (mean_FTE_group_CK$mean_wage[2] / mean_FTE_group_CK$mean_FTE_nm[2])
-pct_effect2 = 100 * fit22$coefficients[2] / mean_FTE_group_CK$mean_FTE_nm[2]
-obs2 <- length(fit22$residuals)
-R_sqrd2 <- summary(fit22)$adj.r.squared
-
-# Column 3
-# create regression sample, drop obs for BK KFC co-owned samples
-ck1994_new$BK_co <- ck1994_new$BK * ck1994_new$CO_OWNED
-ck1994_new$KFC_co <- ck1994_new$KFC * ck1994_new$CO_OWNED
-data3 <- ck1994_new[(ck1994_new$BK_co == 0) & (ck1994_new$KFC_co == 0), ]
-fit31 <- lm(FTE_change_nm ~ STATE, data = data3)
-summary(fit31)           
-
-fit32 <- lm(FTE_change_nm ~ STATE + BK + KFC + RR, data = data3)
-summary(fit32)
-
-# se
-se31 <- 1.24
-se32 <- 1.25
-
-elast3 = fit32$coefficients[2] * (mean_FTE_group_CK$mean_wage[2] / mean_FTE_group_CK$mean_FTE_nm[2])
-pct_effect3 = 100 * fit32$coefficients[2] / mean_FTE_group_CK$mean_FTE_nm[2]
-obs3 <- length(fit32$residuals)
-R_sqrd3 <- summary(fit32)$adj.r.squared
-# Column 4
-# sampled universe- use NW data
-
-```
-```{r}
-# Column 4
-# sampled universe
-```
-
+## Data Preparation
 
 ```{r}
 nw2000_raw_data <- read.table(file.path(in_path, 'Data', 'Raw', 'nw2000_data.dat'))
@@ -668,8 +592,10 @@ nw2000_raw_data_col <- nw2000_raw_data %>%
   mutate(across(where(is.character), as.numeric))
 ```
 
+
 ```{r}
-# randomly choose hoursa/b/c/d as the hours data used
+# use hoursa as primary data, if there is na for hoursa, then randomly select hoursb/c/d as the data used
+# calculate FTE based on weekly/biweeky/monthly
 
 nw2000_random <- nw2000_raw_data_col %>%
   rowwise() %>%
@@ -699,147 +625,189 @@ nw2000_random <- nw2000_raw_data_col %>%
     TRUE ~ hours/35
   )) %>%
   
-  mutate(FTE_change = FTE2-FTE)
+  mutate(FTE_change = FTE2-FTE) 
 ```
 
+
+
+
 ```{r}
-# NW2000 Table 4 continued
-# Data preparation for Column 4 & 5
-# construct FTE change
-nw2000_random$FTE_change_nm <- nw2000_random$FTE2 - nw2000_random$FTE
+nw2000_PA_summary_wave1 <- nw2000_random %>%
+  filter(PA == 1) %>%
+  group_by(chain) %>%
+  summarise(obs = n(),
+            mean_FTE = mean(FTE, na.rm=T),
+            sd_FTE= sd(FTE, na.rm = T),
+            max_FTE = max(FTE, na.rm = T),
+            min_FTE = min(FTE, na.rm = T))
 
-# Averages of Payroll data
-nw2000_random$hours_mean <- rowMeans(data.frame(nw2000_random$hoursa, nw2000_random$hoursb, nw2000_random$hoursc, nw2000_random$hoursd), na.rm=TRUE)
-nw2000_random$hours2_mean <- rowMeans(data.frame(nw2000_random$hours2a, nw2000_random$hours2b, nw2000_random$hours2c, nw2000_random$hours2d), na.rm=TRUE)
+nw2000_NJ_summary_wave1 <- nw2000_random %>%
+  filter(NJ == 1) %>%
+  group_by(chain) %>%
+  summarise(obs = n(),
+            mean_FTE = mean(FTE, na.rm=T),
+            sd_FTE= sd(FTE, na.rm = T),
+            max_FTE = max(FTE, na.rm = T),
+            min_FTE = min(FTE, na.rm = T))
 
-# calculate mean FTE
-nw2000_random <- nw2000_random %>%
-  mutate(FTE_mean = case_when(
-    biwkly == "1" ~ (hours_mean/2)/35,
-    mnthly == "1" ~ (hours_mean/4)/35,
-    TRUE ~ hours_mean/35
+nw2000_PA_summary_wave2 <- nw2000_random %>%
+  filter(PA == 1) %>%
+  group_by(chain) %>%
+  summarise(obs = n(),
+            mean_FTE = mean(FTE2, na.rm=T),
+            sd_FTE= sd(FTE2, na.rm = T),
+            max_FTE = max(FTE2, na.rm = T),
+            min_FTE = min(FTE2, na.rm = T))
+
+nw2000_NJ_summary_wave2 <- nw2000_random %>%
+  filter(NJ == 1) %>%
+  group_by(chain) %>%
+  summarise(obs = n(),
+            mean_FTE = mean(FTE2, na.rm=T),
+            sd_FTE= sd(FTE2, na.rm = T),
+            max_FTE = max(FTE2, na.rm = T),
+            min_FTE = min(FTE2, na.rm = T))
+
+```
+
+
+
+```{r}
+# sumary statistics for FTE:
+
+nw2000_ss <- 
+  rbind(nw2000_PA_summary_wave1, nw2000_NJ_summary_wave1,
+          nw2000_PA_summary_wave2, nw2000_NJ_summary_wave2) %>%
+  mutate (chain = case_when(
+    chain == 1 ~ "Burger King",
+    chain == 2 ~ "KFC",
+    chain == 3 ~ "Roy Rogers",
+    chain == 4 ~ "Wendy's",
   )) %>%
-  
-  mutate(FTE2_mean = case_when(
-    biwkly == "1" ~ (hours2_mean/2)/35,
-    mnthly == "1" ~ (hours2_mean/4)/35,
-    TRUE ~ hours2_mean/35
-  ))
+  mutate_at(vars(obs, mean_FTE, sd_FTE, max_FTE, min_FTE), ~round(., 1)) %>%
+  rename(Observation = obs,
+         Mean = mean_FTE,
+         "Standard deviation" = sd_FTE,
+         Maximum = max_FTE,
+         Minimum = min_FTE
+         )
 
-nw2000_random$FTE_mean_change <- nw2000_random$FTE2_mean - nw2000_random$FTE_mean
-
-# calculate mean FTE/WAGE for NJ for elasticity
-mean_FTE_group_NW <- nw2000_random %>% 
-            group_by(NJ) %>%
-            summarise(mean_FTE = mean(FTE,na.rm=T),
-                      mean_FTE2 = mean(FTE2,na.rm=T),
-                      mean_FTE_mean = mean(FTE_mean,na.rm=T),
-                      mean_FTE2_mean = mean(FTE2_mean,na.rm=T))
-
-# Column 5
-# Single payroll period
-fit51 <- lm(FTE_change_nm ~ NJ, data = nw2000_random)
-summary(fit51)           
-
-# create dummy for diff chains
-nw2000_random <- nw2000_random %>% mutate(BK = ifelse(chain==1, 1, 0),
-                         KFC = ifelse(chain==2, 1, 0),
-                         RR = ifelse(chain==3, 1, 0),
-                         WD = ifelse(chain==4, 1, 0))
-fit52 <- lm(FTE_change_nm ~ NJ + BK + KFC + RR, data = nw2000_random)
-summary(fit52)
-
-# se
-se51 <- 0.42
-se52 <- 0.34
-
-elast5 = fit52$coefficients[2] * (mean_FTE_group_CK$mean_wage[2] / mean_FTE_group_NW$mean_FTE[2])
-pct_effect5 = 100 * fit52$coefficients[2] / mean_FTE_group_NW$mean_FTE[2]
-obs5 <- length(fit52$residuals)
-R_sqrd5 <- summary(fit52)$adj.r.squared
+nw2000_ss %>%
+  kbl(caption = "NW2000 - Summary Statistics of FTE",  booktabs = T) %>%
+  kable_styling() %>%
+  pack_rows("PA - Wave1", 1, 3, italic = T) %>%
+  pack_rows("NJ - Wave1", 4, 7, italic = T) %>%
+  pack_rows("PA - Wave2", 8, 10, italic = T) %>%
+   pack_rows("NJ - Wave2", 11, 14, italic = T)
 ```
 
+
+---------------------------------------------------------------------------------
+
+# 1(e). NW2000 Figure 4
+
+
 ```{r}
-# Table 4 Column 6
-fit61 <- lm(FTE_mean_change ~ NJ, data = nw2000_random)
-summary(fit61)           
+# calculate correlations:
 
-fit62 <- lm(FTE_mean_change ~ NJ + BK + KFC + RR, data = nw2000_random)
-summary(fit62)
+ck_cor1 <- cor(ck1994_new$FTE, ck1994_new$FTE2, use = "complete.obs")
+ck_cor2 <- cor(ck1994_new$FTE, ck1994_new$FTE_change, use = "complete.obs")
+nw_cor1 <- cor(nw2000_random$FTE, nw2000_random$FTE2, use = "complete.obs")
+nw_cor2 <- cor(nw2000_random$FTE, nw2000_random$FTE_change, use = "complete.obs")
 
-# se
-se61 <- 0.49
-se62 <- 0.39
-
-elast6 = fit62$coefficients[2] * (mean_FTE_group_CK$mean_wage[2] / mean_FTE_group_NW$mean_FTE_mean[2])
-pct_effect6 = 100 * fit62$coefficients[2] / mean_FTE_group_NW$mean_FTE_mean[2]
-obs6 <- length(fit62$residuals)
-R_sqrd6 <- summary(fit62)$adj.r.squared
+rbind(ck_cor1, ck_cor2, nw_cor1, nw_cor2) %>%
+  as.data.frame() %>%
+  rename(correlation = V1) %>%
+  mutate(correlation = round(correlation, 2))
 ```
 
 
 ```{r}
-# Merge all regs together 
-T4 <- data.frame(matrix(nrow = 6, ncol = 6))
-T4$X1[1] <- paste(fit11$coefficients[2],"(",")",se11)
-T4$X1[2] <- paste(fit12$coefficients[2],"(",")",se12)  
-T4$X1[3] <- elast1  
-T4$X1[4] <- pct_effect1
-T4$X1[5] <- obs1
-T4$X1[6] <- R_sqrd1
+# plot correlation:
 
-T4$X2[1] <- paste(fit21$coefficients[2],"(",")",se21)
-T4$X2[2] <- paste(fit22$coefficients[2],"(",")",se22)  
-T4$X2[3] <- elast2  
-T4$X2[4] <- pct_effect2
-T4$X2[5] <- obs2
-T4$X2[6] <- R_sqrd2
+ck_cor1_plot <-
+  ggplot(ck1994_new, aes(x = FTE, y = FTE2)) +
+  geom_point(shape = 3) +
+  labs(
+    title = "Card/Krueger Data, Correlation=0.55",
+    x = "Wave 1 Employment",
+    y = "Wave 2 Employment"
+  ) + 
+  scale_x_continuous(breaks = seq(0, 80, by = 10)) +
+  scale_y_continuous(breaks = seq(0, 80, by = 10)) + 
+  theme(
+    panel.background = element_rect(fill = "white"),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    axis.line = element_line(colour = "black"),
+    plot.title = element_text(hjust = 0.5))
 
-T4$X3[1] <- paste(fit31$coefficients[2],"(",")",se31)
-T4$X3[2] <- paste(fit32$coefficients[2],"(",")",se32)  
-T4$X3[3] <- elast3  
-T4$X3[4] <- pct_effect3
-T4$X3[5] <- obs3
-T4$X3[6] <- R_sqrd3
+ck_cor2_plot <-
+  ggplot(ck1994_new, aes(x = FTE, y = FTE_change)) +
+  geom_point(shape = 3) +
+  labs(
+    title = "Card/Krueger Data, Correlation=-0.53",
+    x = "Wave 1 Employment",
+    y = "Wave 2 - Wave 1 Employment"
+  ) + 
+  scale_x_continuous(breaks = seq(0, 80, by = 10)) +
+  scale_y_continuous(breaks = seq(-40, 40, by = 10)) + 
+  theme(
+    panel.background = element_rect(fill = "white"),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    axis.line = element_line(colour = "black"),
+    plot.title = element_text(hjust = 0.5))
 
-T4$X4[1] <- paste(fit41$coefficients[2],"(",")",se41)
-T4$X4[2] <- paste(fit42$coefficients[2],"(",")",se41)  
-T4$X4[3] <- elast4  
-T4$X4[4] <- pct_effect4
-T4$X4[5] <- obs4
-T4$X4[6] <- R_sqrd4
 
-T4$X5[1] <- paste(fit51$coefficients[2],"(",")",se51)
-T4$X5[2] <- paste(fit52$coefficients[2],"(",")",se51)  
-T4$X5[3] <- elast5  
-T4$X5[4] <- pct_effect5
-T4$X5[5] <- obs5
-T4$X5[6] <- R_sqrd5
+nw_cor1_plot <-
+  ggplot(nw2000_random, aes(x = FTE, y = FTE2)) +
+  geom_point(shape = 3) +
+  labs(
+    title = "Payroll Data, Correlation=0.87",
+    x = "Wave 1 Employment",
+    y = "Wave 2 Employment"
+  ) + 
+  scale_x_continuous(breaks = seq(0, 80, by = 10)) +
+  scale_y_continuous(breaks = seq(0, 80, by = 10)) +
+  coord_cartesian(xlim = c(0, 80), ylim = c(0, 80)) + 
+  theme(
+    panel.background = element_rect(fill = "white"),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    axis.line = element_line(colour = "black"),
+    plot.title = element_text(hjust = 0.5))
 
-T4$X6[1] <- paste(fit61$coefficients[2],"(",")",se61)
-T4$X6[2] <- paste(fit62$coefficients[2],"(",")",se61)  
-T4$X6[3] <- elast6  
-T4$X6[4] <- pct_effect6
-T4$X6[5] <- obs6
-T4$X6[6] <- R_sqrd6
 
-# rename cols and rows
-rownames(T4) <- c("New Jersey dummy,\n no controls",
-                  "New Jersey dummy,\n controls for chain \n and ownership",
-                  "Implied elasticity",
-                  "Percentage effect",
-                  "Number of observations",
-                  "Adjusted R2")
-
-colnames(T4) <- c("CK results \n (1)",
-                  "Add observations \n missing starting \n wages or data on \n managers \n (2)",
-                  "Drop \n observations on \n BK and KFC \n company-owned \n restaurants \n (3)",
-                  "Sampled \n universe \n (4)",
-                  "Single \n payroll \n period \n (5)",
-                  "Averages of \n payroll data \n (6)")
-kable(T4) # round it!
-                  
+nw_cor2_plot <-
+  ggplot(nw2000_random, aes(x = FTE, y = FTE_change)) +
+  geom_point(shape = 3) +
+  labs(
+    title = "Payroll Data, Correlation=-0.04",
+    x = "Wave 1 Employment",
+    y = "Wave 2 Employment"
+  ) + 
+  scale_x_continuous(breaks = seq(0, 80, by = 10)) +
+  scale_y_continuous(breaks = seq(-40, 40, by = 10)) +
+  coord_cartesian(xlim = c(0, 80), ylim = c(-40, 40)) + 
+  theme(
+    panel.background = element_rect(fill = "white"),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    axis.line = element_line(colour = "black"),
+    plot.title = element_text(hjust = 0.5))
 ```
+
+
+## 1(e) Figure 4
+
+```{r}
+library(gridExtra)
+grid.arrange(ck_cor1_plot, nw_cor1_plot, ck_cor2_plot, nw_cor2_plot, ncol=2,
+            top = "Figure 4. Assessing Measurement Error In the Change In Employment")
+```
+
+# # 1.(f) replicate CK1994 Table 3 column 1-3 using NW2000 data
 
 ```{r}
 # f. Replicate Table 3 using 
@@ -961,18 +929,300 @@ T3R4_m <- data.frame(PA=c(paste(T3R4_res$mean[1],"(",T3R4_res$se[1],")")),
                      DIFF_NJPA=c(paste(T3R4_res$mean[3],"(",T3R4_res$se[3],")")))
 T3R4_m
 
-
 # append all dfs together
 T3 <- rbind(T3R1_m,T3R2_m,T3R3_m,T3R4_m) 
 
 # add row names
-rownames(T3) <- c("FTE employment before, all available observations",
-                  "FTE employment after, all available observations",
-                  "Change in mean FTE employment",
-                  "Change in mean FTE employment, balanced sample fo stores")
-                 
-colnames(T3) <- c("PA","NJ","Difference, NJ-PA")
-T3
+rowidx <- c("1. FTE employment before, \n all available observations",
+            "2. FTE employment after, \n all available observations",
+            "3. Change in mean FTE \n employment",
+            "4. Change in mean FTE \n employment, balanced \n sample of stores")
+           
+T3 <- cbind(rowidx, T3)
 
+colnames(T3) <- c("Variable","PA \n (i)","NJ \n (ii)","Difference, \n NJ-PA (iii)")
+T3 %>% kbl(caption = "TABLE 3- AVERAGE EMPLOYMENT PER STORE \n BEFORE
+            AND AFTER THE RIDE \n IN NEW JERSEY MINIMUM WAGE",  booktabs = T)
+
+```
+
+# # 1.(g) Replicate NW2000 Table 4
+
+```{r}
+# NW 2000 Table 4
+# construct nonmanagement employment
+ck1994_new$FTE_nm <- ck1994_new$EMPFT + (0.5)*ck1994_new$EMPPT
+ck1994_new$FTE2_nm <- ck1994_new$EMPFT2 + (0.5)*ck1994_new$EMPPT2
+ck1994_new$FTE_change_nm <- ck1994_new$FTE2_nm - ck1994_new$FTE_nm
+
+# Column 1
+# create regression sample, drop missing for starting wage and managers
+data1 <- ck1994_new %>% drop_na(c("WAGE_ST", "NMGRS"))
+fit11 <- lm(FTE_change_nm ~ STATE, data = data1)
+summary(fit11)  
+
+fit12 <- lm(FTE_change_nm ~ STATE + BK + KFC + RR, data = data1)
+summary(fit12)
+
+# se
+se11 <- 1.12
+se12 <- 1.12
+
+# calculate mean FTE/WAGE for NJ for elasticity
+mean_FTE_group_CK <- ck1994_new %>% 
+            group_by(STATE) %>%
+            summarise(mean_FTE_nm = mean(FTE_nm,na.rm=T),
+                      mean_FTE2_nm = mean(FTE2_nm,na.rm=T),
+                      mean_wage = mean(WAGE_ST,na.rm=T),
+                      mean_wage2 = mean(WAGE_ST2,na.rm=T))
+
+# elasticity
+# coef1 <- abs(fit12$coefficients[2])
+# mean of NJ (annual average employment data from Table 3 CK)
+elast1 = fit12$coefficients[2] * (mean_FTE_group_CK$mean_wage[2] / mean_FTE_group_CK$mean_FTE_nm[2])
+pct_effect1 = 100 * fit12$coefficients[2] / mean_FTE_group_CK$mean_FTE_nm[2]
+obs1 <- length(fit12$residuals)
+R_sqrd1 <- summary(fit12)$adj.r.squared
+
+
+# Column 2
+# add missing for starting wage and managers
+fit21 <- lm(FTE_change_nm ~ STATE, data = ck1994_new)
+summary(fit21)           
+
+fit22 <- lm(FTE_change_nm ~ STATE + BK + KFC + RR, data = ck1994_new)
+summary(fit22)
+
+# se
+se21 <- 1.12
+se22 <- 1.12
+
+# elasticity
+coef2 <- abs(fit22$coefficients[2] * mean((ck1994_new$FTE_change_nm),na.rm =TRUE))
+
+elast2 = fit22$coefficients[2] * (mean_FTE_group_CK$mean_wage[2] / mean_FTE_group_CK$mean_FTE_nm[2])
+pct_effect2 = 100 * fit22$coefficients[2] / mean_FTE_group_CK$mean_FTE_nm[2]
+obs2 <- length(fit22$residuals)
+R_sqrd2 <- summary(fit22)$adj.r.squared
+
+# Column 3
+# create regression sample, drop obs for BK KFC co-owned samples
+ck1994_new$BK_co <- ck1994_new$BK * ck1994_new$CO_OWNED
+ck1994_new$KFC_co <- ck1994_new$KFC * ck1994_new$CO_OWNED
+data3 <- ck1994_new[(ck1994_new$BK_co == 0) & (ck1994_new$KFC_co == 0), ]
+fit31 <- lm(FTE_change_nm ~ STATE, data = data3)
+summary(fit31)           
+
+fit32 <- lm(FTE_change_nm ~ STATE + BK + KFC + RR, data = data3)
+summary(fit32)
+
+# se
+se31 <- 1.24
+se32 <- 1.25
+
+elast3 = fit32$coefficients[2] * (mean_FTE_group_CK$mean_wage[2] / mean_FTE_group_CK$mean_FTE_nm[2])
+pct_effect3 = 100 * fit32$coefficients[2] / mean_FTE_group_CK$mean_FTE_nm[2]
+obs3 <- length(fit32$residuals)
+R_sqrd3 <- summary(fit32)$adj.r.squared
+
+```
+
+```{r}
+# NW2000 Table 4 continued
+# Data preparation for Column 4 & 5
+# construct FTE change
+nw2000_random$FTE_change_nm <- nw2000_random$FTE2 - nw2000_random$FTE
+
+# Averages of Payroll data
+nw2000_random$hours_mean <- rowMeans(data.frame(nw2000_random$hoursa, nw2000_random$hoursb, nw2000_random$hoursc, nw2000_random$hoursd), na.rm=TRUE)
+nw2000_random$hours2_mean <- rowMeans(data.frame(nw2000_random$hours2a, nw2000_random$hours2b, nw2000_random$hours2c, nw2000_random$hours2d), na.rm=TRUE)
+
+# calculate mean FTE
+nw2000_random <- nw2000_random %>%
+  mutate(FTE_mean = case_when(
+    biwkly == "1" ~ (hours_mean/2)/35,
+    mnthly == "1" ~ (hours_mean/4)/35,
+    TRUE ~ hours_mean/35
+  )) %>%
+  
+  mutate(FTE2_mean = case_when(
+    biwkly == "1" ~ (hours2_mean/2)/35,
+    mnthly == "1" ~ (hours2_mean/4)/35,
+    TRUE ~ hours2_mean/35
+  ))
+
+nw2000_random$FTE_mean_change <- nw2000_random$FTE2_mean - nw2000_random$FTE_mean
+
+# calculate mean FTE/WAGE for NJ for elasticity
+mean_FTE_group_NW <- nw2000_random %>% 
+            group_by(NJ) %>%
+            summarise(mean_FTE = mean(FTE,na.rm=T),
+                      mean_FTE2 = mean(FTE2,na.rm=T),
+                      mean_FTE_mean = mean(FTE_mean,na.rm=T),
+                      mean_FTE2_mean = mean(FTE2_mean,na.rm=T))
+```
+
+```{r}
+# Column 4
+# Calculate CK FTE data using NW data
+# calculate mean FTE
+data4 <- nw2000_random %>%
+  rowwise() %>%
+  mutate(
+    FTE_CK = if (!is.na(nmempa)) {
+      nmempa
+    } else {
+      sample(c(nmempb, nmempc, nmempd), 1)
+    },
+    
+    FTE2_CK = if (!is.na(nmemp2a)) {
+      nmemp2a
+    } else {
+      sample(c(nmemp2b, nmemp2c, nmemp2d), 1)
+    }
+  ) %>%
+  
+  mutate(FTE_CK_change = FTE2_CK-FTE_CK) 
+
+mean_FTE_group_NW_col4 <- data4 %>% 
+            group_by(NJ) %>%
+            summarise(mean_FTE_CK = mean(FTE_CK,na.rm=T),
+                      mean_FTE2_CK = mean(FTE2_CK,na.rm=T))
+# sampled universe
+data4_sample <- data4 %>% 
+                filter((BK == 1 & (zip13==189|zip13==88|zip13==86|zip13==72|zip13==194|zip13==190|zip13==186|zip13==182|zip13==87|zip13==85|zip13==83|zip13==82|zip13==80|zip13==79|zip13==78|zip13==76|zip13==74|zip13==73|zip13==71|zip13==70))|
+                       (WD == 1 & (zip13==88|zip13==76|zip13==72|zip13==70))|
+                       ((WD == 1 & comp==1) & (zip13==194|zip13==181|zip13==180))|
+                       ((RR == 1 & comp==1) & (zip13==189|zip13==190|zip13==194|zip13==88|zip13==85|zip13==84|zip13==81|zip13==80|zip13==79|zip13==78|zip13==77|zip13==76|zip13==74|zip13==73|zip13==71|zip13==70))|
+                (RR == 1 & (zip13==86|zip13==85))|
+                (KFC==1 & (zip13==86|zip13==85|zip13==80|zip13==77)))
+                       
+# Single payroll period
+fit41 <- lm(FTE_CK_change ~ NJ, data = data4_sample)
+summary(fit41)           
+
+# create dummy for diff chains
+nw2000_random <- nw2000_random %>% mutate(BK = ifelse(chain==1, 1, 0),
+                         KFC = ifelse(chain==2, 1, 0),
+                         RR = ifelse(chain==3, 1, 0),
+                         WD = ifelse(chain==4, 1, 0))
+
+fit42 <- lm(FTE_CK_change ~ NJ + BK + KFC + RR, data = data4_sample)
+summary(fit42)
+
+# se
+se41 <- 1.20
+se42 <- 1.22
+
+elast4 = fit42$coefficients[2] * (mean_FTE_group_CK$mean_wage[2] / mean_FTE_group_NW_col4$mean_FTE_CK[2])
+pct_effect4 = 100 * fit42$coefficients[2] / mean_FTE_group_NW_col4$mean_FTE_CK[2]
+obs4 <- length(fit42$residuals)
+R_sqrd4 <- summary(fit42)$adj.r.squared  
+
+```
+
+
+```{r}
+# Column 5
+# Single payroll period
+fit51 <- lm(FTE_change_nm ~ NJ, data = nw2000_random)
+summary(fit51)           
+
+# create dummy for diff chains
+nw2000_random <- nw2000_random %>% mutate(BK = ifelse(chain==1, 1, 0),
+                         KFC = ifelse(chain==2, 1, 0),
+                         RR = ifelse(chain==3, 1, 0),
+                         WD = ifelse(chain==4, 1, 0))
+fit52 <- lm(FTE_change_nm ~ NJ + BK + KFC + RR, data = nw2000_random)
+summary(fit52)
+
+# se
+se51 <- 0.42
+se52 <- 0.34
+
+elast5 = fit52$coefficients[2] * (mean_FTE_group_CK$mean_wage[2] / mean_FTE_group_NW$mean_FTE[2])
+pct_effect5 = 100 * fit52$coefficients[2] / mean_FTE_group_NW$mean_FTE[2]
+obs5 <- length(fit52$residuals)
+R_sqrd5 <- summary(fit52)$adj.r.squared
+
+
+# Table 4 Column 6
+fit61 <- lm(FTE_mean_change ~ NJ, data = nw2000_random)
+summary(fit61)           
+
+fit62 <- lm(FTE_mean_change ~ NJ + BK + KFC + RR, data = nw2000_random)
+summary(fit62)
+
+# se
+se61 <- 0.49
+se62 <- 0.39
+
+elast6 = fit62$coefficients[2] * (mean_FTE_group_CK$mean_wage[2] / mean_FTE_group_NW$mean_FTE_mean[2])
+pct_effect6 = 100 * fit62$coefficients[2] / mean_FTE_group_NW$mean_FTE_mean[2]
+obs6 <- length(fit62$residuals)
+R_sqrd6 <- summary(fit62)$adj.r.squared
+```
+
+```{r}
+# Merge all regs together 
+T4 <- data.frame(matrix(nrow = 6, ncol = 6))
+T4$X1[1] <- paste(round(fit11$coefficients[2],2),"(",round(se11,2),")")
+T4$X1[2] <- paste(round(fit12$coefficients[2],2),"(",round(se12,2),")")  
+T4$X1[3] <- round(elast1,2)
+T4$X1[4] <- round(pct_effect1,2)
+T4$X1[5] <- obs1
+T4$X1[6] <- round(R_sqrd1,3)
+
+T4$X2[1] <- paste(round(fit21$coefficients[2],2),"(",round(se21,2),")")
+T4$X2[2] <- paste(round(fit22$coefficients[2],2),"(",round(se22,2),")")  
+T4$X2[3] <- round(elast2,2)
+T4$X2[4] <- round(pct_effect2,2)
+T4$X2[5] <- obs2
+T4$X2[6] <- round(R_sqrd2,2)
+
+T4$X3[1] <- paste(round(fit31$coefficients[2],2),"(",round(se31,2),")")
+T4$X3[2] <- paste(round(fit32$coefficients[2],2),"(",round(se32,2),")")  
+T4$X3[3] <- round(elast3,2)  
+T4$X3[4] <- round(pct_effect3,2)
+T4$X3[5] <- obs3
+T4$X3[6] <- round(R_sqrd3,3)
+
+T4$X4[1] <- paste(round(fit41$coefficients[2],2),"(",round(se41,2),")")
+T4$X4[2] <- paste(round(fit42$coefficients[2],2),"(",round(se42,2),")")  
+T4$X4[3] <- round(elast4,2)  
+T4$X4[4] <- round(pct_effect4,2)
+T4$X4[5] <- obs4
+T4$X4[6] <- round(R_sqrd4,3)
+
+T4$X5[1] <- paste(round(fit51$coefficients[2],2),"(",round(se51,2),")")
+T4$X5[2] <- paste(round(fit52$coefficients[2],2),"(",round(se52,2),")")  
+T4$X5[3] <- round(elast5,2)  
+T4$X5[4] <- round(pct_effect5,2)
+T4$X5[5] <- obs5
+T4$X5[6] <- round(R_sqrd5,3)
+
+T4$X6[1] <- paste(round(fit61$coefficients[2],2),"(",")",round(se61,2))
+T4$X6[2] <- paste(round(fit62$coefficients[2],2),"(",")",round(se62,2))  
+T4$X6[3] <- round(elast6,2)  
+T4$X6[4] <- round(pct_effect6,2)
+T4$X6[5] <- round(obs6,2)
+T4$X6[6] <- round(R_sqrd6,2)
+
+# rename cols and rows
+rownames(T4) <- c("New Jersey dummy,\n no controls",
+                  "New Jersey dummy,\n controls for chain \n and ownership",
+                  "Implied elasticity",
+                  "Percentage effect",
+                  "Number of observations",
+                  "Adjusted R2")
+
+colnames(T4) <- c("CK results \n (1)",
+                  "Add observations \n missing starting \n wages or data on \n managers \n (2)",
+                  "Drop \n observations on \n BK and KFC \n company-owned \n restaurants \n (3)",
+                  "Sampled \n universe \n (4)",
+                  "Single \n payroll \n period \n (5)",
+                  "Averages of \n payroll data \n (6)")
+T4 %>% kbl()  # round it!
+                  
 ```
 
