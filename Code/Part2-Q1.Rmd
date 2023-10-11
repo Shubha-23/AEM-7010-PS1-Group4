@@ -1228,6 +1228,6 @@ colnames(T4) <- c("CK results \n (1)",
                   "Averages of \n payroll data \n (6)")
 T4 %>% kbl()  # round it!
 
-write.xlsx(T4,file.path(in_path,'Output','T4_NW2000.xlsx'),col.names = TRUE)                  
+write.xlsx(T4,file.path(in_path,'Output','T4_NW2000.xlsx'),col.names = TRUE,row.names=T)                  
 ```
 
