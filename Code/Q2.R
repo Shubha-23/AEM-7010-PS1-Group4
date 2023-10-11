@@ -268,7 +268,8 @@ MSA_sample %>%
   summarise(mean_empl=mean(employed, na.rm = T))
 
 
-#-------------- Tables for Q3 --------------#
+#-------------- Tables for Q2 (b) --------------#
+
 balance_covariates_w <- BTB_state %>% 
   filter(group==1) %>% 
   select('BTB', 'employed', 'noHS', 'enrolledschool', 'age',
@@ -319,7 +320,82 @@ BTB_state %>%
   group_by(group, BTB_ever_reg) %>% 
   summarise(n())
 
+#-------------- Figures for Q2 (b) --------------#
 
+# Whether a metro adopts BTB in our period
+metro_btb <- BTB_data %>% filter(BTB==1) %>% distinct(metroFIPS) %>% 
+  mutate(metro_btb=1)
+
+# Data to produce Fig.1, the unemployment trend of BTB and non-BTB metro
+data_figure1 <- BTB_data %>% distinct(metroFIPS,year,month,BTB) %>% 
+  left_join(MSA_data, by=c("metroFIPS","year","month")) %>% 
+  group_by(metroFIPS,year) %>% 
+  summarise(une=mean(UnemploymentRate,na.rm = T)) %>% 
+  left_join(metro_btb,by="metroFIPS") %>% 
+  group_by(metro_btb,year) %>% summarise(une=mean(une,na.rm = T)) %>% 
+  mutate(BTB=ifelse(is.na(metro_btb),"No","Yes"))
+
+# Draw and save Fig.1
+data_figure1 %>% ggplot(aes(x=year,y=une,lty=BTB))+
+  geom_line()+geom_point()+theme_bw()+
+  xlab("Year")+ylab("Unemployment Rate")
+
+ggsave(
+  filename = "/Users/shubhalakshminag/Dropbox/AEM-7010-PS1-Group4/Output/Figure1.png", width = 8,height = 6,     
+  units = "in",dpi = 300         
+)
+
+# Find the exact adoption year of BTB of each state
+btb_time <- BTB_data %>% filter(BTB==1) %>% 
+  group_by(metroFIPS) %>% summarise(btb_year=min(year,na.rm = T))
+
+# Data to produce Fig.2 (keep metros adopting BTB)
+data_figure2 <- BTB_data %>% distinct(metroFIPS,year,month,BTB) %>%
+  left_join(MSA_data,by=c("metroFIPS","year","month")) %>% 
+  group_by(metroFIPS,year) %>% 
+  summarise(une=mean(UnemploymentRate,na.rm = T)) %>% 
+  left_join(metro_btb,by="metroFIPS") %>% 
+  filter(metro_btb==1) %>% 
+  left_join(btb_time,by="metroFIPS") %>% 
+  mutate(policy=year-btb_year)
+
+data_figure2$policy[data_figure2$policy<=-4] <- -4
+data_figure2$policy[data_figure2$policy>=3] <- 3
+
+# Regression based on the distance to BTB adoption
+data_figure2 <- data_figure2 %>% 
+  mutate(pre4=ifelse(policy<=-4,1,0),
+         pre3=ifelse(policy==-3,1,0),pre2=ifelse(policy==-2,1,0),
+         post0=ifelse(policy==0,1,0),post1=ifelse(policy==1,1,0),
+         post2=ifelse(policy==2,1,0),post3=ifelse(policy==3,1,0))
+
+model9 <- feols(une~pre4+pre3+pre2+post0+post1+post2+post3|metroFIPS+year,data_figure2,cluster = "metroFIPS")
+etable(model9)
+
+# Draw Fig.2
+table1 <- as.data.frame(model9$coefficients)
+table2 <- as.data.frame(model9$se)
+result1 <- cbind(table1,table2) %>% mutate(id=c(-4:-2,0:3))
+names(result1) <- c("coef","se","id")
+add <- c(0,0,-1)
+result1 <- as.data.frame(rbind(result1,add))
+result1 %>% mutate(ymax=coef+1.96*se,ymin=coef-1.96*se) %>% 
+  ggplot(aes(x=id))+
+  geom_ribbon(aes(ymin = ymin, ymax = ymax), fill = "grey80", alpha = 0.3) + 
+  geom_line(aes(y = coef), color = "black", size = 1.2) +
+  geom_line(aes(y = ymax), color = "grey60", size = 1) + 
+  geom_line(aes(y = ymin), color = "grey60", size = 1) +
+  geom_hline(yintercept = 0, color = "red", lty = 2) +
+  geom_point(aes(y = coef), color = "black", size = 3) +
+  xlab("Years after BTB")+ylab("Dynamic Effect") +
+  scale_x_continuous(breaks = seq(min(result1$id), max(result1$id), by = 1), 
+                     labels = as.character(seq(min(result1$id), max(result1$id), by = 1))) +
+  theme_bw()
+
+ggsave(
+  filename = "/Users/shubhalakshminag/Dropbox/AEM-7010-PS1-Group4/Output/Figure2.png", width = 8,height = 6,     
+  units = "in",dpi = 300         
+)
 
 
 
