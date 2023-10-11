@@ -1066,6 +1066,12 @@ mean_FTE_group_NW <- nw2000_random %>%
 # Column 4
 # Calculate CK FTE data using NW data
 # calculate mean FTE
+# create dummy for diff chains
+nw2000_random <- nw2000_random %>% mutate(BK = ifelse(chain==1, 1, 0),
+                         KFC = ifelse(chain==2, 1, 0),
+                         RR = ifelse(chain==3, 1, 0),
+                         WD = ifelse(chain==4, 1, 0))
+
 data4 <- nw2000_random %>%
   rowwise() %>%
   mutate(
@@ -1088,6 +1094,7 @@ mean_FTE_group_NW_col4 <- data4 %>%
             group_by(NJ) %>%
             summarise(mean_FTE_CK = mean(FTE_CK,na.rm=T),
                       mean_FTE2_CK = mean(FTE2_CK,na.rm=T))
+
 # sampled universe
 data4_sample <- data4 %>% 
                 filter((BK == 1 & (zip13==189|zip13==88|zip13==86|zip13==72|zip13==194|zip13==190|zip13==186|zip13==182|zip13==87|zip13==85|zip13==83|zip13==82|zip13==80|zip13==79|zip13==78|zip13==76|zip13==74|zip13==73|zip13==71|zip13==70))|
@@ -1128,11 +1135,6 @@ R_sqrd4 <- summary(fit42)$adj.r.squared
 fit51 <- lm(FTE_change_nm ~ NJ, data = nw2000_random)
 summary(fit51)           
 
-# create dummy for diff chains
-nw2000_random <- nw2000_random %>% mutate(BK = ifelse(chain==1, 1, 0),
-                         KFC = ifelse(chain==2, 1, 0),
-                         RR = ifelse(chain==3, 1, 0),
-                         WD = ifelse(chain==4, 1, 0))
 fit52 <- lm(FTE_change_nm ~ NJ + BK + KFC + RR, data = nw2000_random)
 summary(fit52)
 
