@@ -21,9 +21,11 @@ Please change the directories to the directory where the data is stored.
 
 Inputs: `ck1994_data.dat`, `nw2000_data.dat`
 
-Outputs: Card and Kreuger Table 2, Table 3; Neumark and Wascher Table 4, Figure 4; Summary statistics and other results
+Outputs: Card and Kreuger Table 2, Table 3; Neumark and Wascher Table 4, Figure 4; Summary statistics and other results. 
 
 Runs: Yes
+
+Note: All outputs can be found in the `output/` folder
 
 ### `Q2.R`
 
@@ -36,5 +38,7 @@ Outputs:
 - Table 2, 3, 4 of Doleac and Hansen, other results for Q2 (b)
 
 Runs: Yes
+
+Note: Tables 4, and figures can be found in the `output/` folder. For table 2 and 3, please run the code and check the stargazer output.
 
 
